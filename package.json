@@ -4,8 +4,8 @@
   "description": "乐荟绝绝子 - 单店点单收银系统（前端 + 后端单应用部署）",
   "private": true,
   "scripts": {
-    "install:frontend": "cd frontend && npm ci",
-    "install:backend": "cd backend && npm ci",
+    "install:frontend": "cd frontend && npm ci --include=dev",
+    "install:backend": "cd backend && npm ci --omit=dev",
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run install:frontend && npm run build:frontend && npm run install:backend",
     "start": "node backend/src/app.js",

@@ -5,13 +5,37 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 // 确保数据目录存在
-// 支持自定义数据目录（通过环境变量 DATA_DIR），适配云部署的持久化卷
-const dataDir = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// 按优先级尝试可写目录：环境变量 DATA_DIR > 项目相对目录 > 系统临时目录
+function findWritableDataDir() {
+  const candidates = [];
+  if (process.env.DATA_DIR) {
+    candidates.push(path.resolve(process.env.DATA_DIR));
+  }
+  candidates.push(path.join(__dirname, '..', 'data'));
+  candidates.push(path.join(os.tmpdir(), 'lehui-data'));
+
+  for (const dir of candidates) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      // 测试写入权限
+      const testFile = path.join(dir, '.write-test');
+      fs.writeFileSync(testFile, 'ok');
+      fs.unlinkSync(testFile);
+      console.log(`[数据库] 使用数据目录: ${dir}`);
+      return dir;
+    } catch (e) {
+      console.warn(`[数据库] 目录 ${dir} 不可用: ${e.message}`);
+    }
+  }
+  throw new Error('无法找到可写的数据目录');
 }
+
+const dataDir = findWritableDataDir();
 
 // 数据库文件路径
 const dbPath = path.join(dataDir, 'app.db');
