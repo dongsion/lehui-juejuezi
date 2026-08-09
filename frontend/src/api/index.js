@@ -1,0 +1,85 @@
+import axios from 'axios'
+
+// axios 实例
+// - 开发环境: /api（vite proxy 转发到后端 3001）
+// - 生产环境: 通过 Vercel rewrite 代理到 Railway 后端（仍用 /api）
+// - 也支持 VITE_API_BASE 环境变量直接指定后端地址
+const baseURL = import.meta.env.VITE_API_BASE || '/api'
+
+const request = axios.create({
+  baseURL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// 请求拦截器：admin 接口自动注入老板令牌
+request.interceptors.request.use(
+  (config) => {
+    // /admin/* 接口需要 owner token
+    if (config.url && config.url.startsWith('/admin')) {
+      const token = localStorage.getItem('owner_token')
+      if (token) {
+        config.headers['x-owner-token'] = token
+      }
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// 响应拦截器：统一处理业务码与错误提示
+request.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      '网络异常，请稍后重试'
+    // 这里不直接弹 Toast，交由调用方决定；仅做日志
+    console.error('[API Error]', error.config?.url, message)
+    return Promise.reject(error)
+  }
+)
+
+export default request
+
+/* ========== 顾客端 API ========== */
+
+// 获取菜单
+export const getMenu = () => request.get('/menu')
+
+// 创建订单
+export const createOrder = (data) => request.post('/orders', data)
+
+// 获取订单详情
+export const getOrder = (orderId) => request.get(`/orders/${orderId}`)
+
+// 创建支付
+export const createPayment = (data) => request.post('/payment/create', data)
+
+// 查询支付状态
+export const getPaymentStatus = (orderId) =>
+  request.get(`/payment/status/${orderId}`)
+
+/* ========== 老板端 API ========== */
+
+// 经营统计
+export const getAdminStats = () => request.get('/admin/stats')
+
+// 订单列表
+export const getAdminOrders = (status) =>
+  request.get('/admin/orders', { params: status ? { status } : {} })
+
+// 菜品列表（管理）
+export const getAdminDishes = () => request.get('/admin/dishes')
+
+// 新增菜品
+export const addDish = (data) => request.post('/admin/dishes', data)
+
+// 更新菜品
+export const updateDish = (id, data) => request.put(`/admin/dishes/${id}`, data)
+
+// 删除菜品
+export const deleteDish = (id) => request.delete(`/admin/dishes/${id}`)

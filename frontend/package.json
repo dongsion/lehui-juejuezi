@@ -1,0 +1,22 @@
+{
+  "name": "baji-clone-frontend",
+  "version": "1.0.0",
+  "description": "小暖咖啡馆 - 移动端 H5 点单应用 (PWA)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "pinia": "^2.2.4",
+    "vant": "^4.9.6",
+    "vue": "^3.5.12",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.4",
+    "vite": "^5.4.10"
+  }
+}

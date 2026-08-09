@@ -1,0 +1,10 @@
+# 忽略不需要进入 Docker 镜像的文件
+node_modules
+dist
+.git
+.gitignore
+*.md
+.env
+.env.local
+data/*.db-shm
+data/*.db-wal

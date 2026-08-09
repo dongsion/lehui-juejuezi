@@ -1,0 +1,24 @@
+{
+  "name": "小暖咖啡馆 - 点单",
+  "short_name": "小暖点单",
+  "description": "小暖咖啡馆移动端点单应用",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBF8F4",
+  "theme_color": "#C2623F",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,226 @@
+/* ===== 全局变量与基础样式 ===== */
+:root {
+  /* 主题色：暖色调 - 赤陶色 */
+  --color-primary: #C2623F;
+  --color-primary-light: #D9886A;
+  --color-primary-dark: #A14E30;
+  --color-primary-bg: #F7E8DF;
+
+  /* 背景：暖白 */
+  --color-bg: #FBF8F4;
+  --color-card: #FFFFFF;
+
+  /* 文字 */
+  --color-text: #2E2A26;
+  --color-text-secondary: #8C8580;
+  --color-text-placeholder: #B5AFA9;
+
+  /* 边框 / 分割线 */
+  --color-border: #EDE6DE;
+  --color-divider: #F0E9E1;
+
+  /* 功能色 */
+  --color-success: #67B279;
+  --color-warning: #E0A93B;
+  --color-danger: #D9534F;
+  --color-wechat: #07C160;
+  --color-alipay: #1677FF;
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+
+  /* 阴影 */
+  --shadow-card: 0 2px 12px rgba(194, 98, 63, 0.06);
+  --shadow-fixed: 0 -2px 16px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
+  font-size: 14px;
+  color: var(--color-text);
+  background-color: #ece7e1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ===== Vant 主题色覆盖 ===== */
+.van-sidebar-item--select::before {
+  background-color: var(--color-primary) !important;
+}
+
+.van-button--primary {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.van-button--primary.van-button--plain {
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.van-tabs__line {
+  background-color: var(--color-primary) !important;
+}
+
+.van-tab--active {
+  color: var(--color-primary) !important;
+}
+
+.van-nav-bar {
+  background-color: var(--color-primary) !important;
+}
+
+.van-nav-bar .van-nav-bar__title,
+.van-nav-bar .van-icon {
+  color: #fff !important;
+}
+
+.van-nav-bar__text {
+  color: #fff !important;
+}
+
+.van-tag--primary {
+  background-color: var(--color-primary) !important;
+}
+
+/* ===== 通用工具类 ===== */
+.page {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.card {
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-danger {
+  color: var(--color-danger);
+}
+
+.price {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.price-symbol {
+  font-size: 0.75em;
+  font-weight: 500;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm);
+}
+
+/* 加载与空状态 */
+.state-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--color-text-secondary);
+}
+
+.state-wrap .state-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+/* 自定义加减按钮（圆形） */
+.qty-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qty-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s;
+}
+
+.qty-btn:active {
+  transform: scale(0.85);
+}
+
+.qty-btn.minus {
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+}
+
+.qty-btn.plus {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.qty-num {
+  min-width: 22px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}

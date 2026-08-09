@@ -1,0 +1,61 @@
+# Docker Compose 编排文件
+# 一条命令启动前端 + 后端 + 数据卷
+#
+# 使用方法：
+#   1. 复制 .env.example 为 .env，填入你的配置
+#   2. docker compose up -d --build
+#   3. 访问 http://你的服务器IP/（顾客点单）
+#      访问 http://你的服务器IP/admin（商家管理，密码在 .env 中配置）
+#
+# HTTPS 需要在宿主机或外层 Nginx/网关层配置 SSL 证书
+# 参考部署指南中的 HTTPS 配置章节
+
+services:
+  # ===== 后端 API 服务 =====
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: baji-backend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - OWNER_TOKEN=${OWNER_TOKEN:-baji-owner-2026}
+    volumes:
+      # SQLite 数据库持久化（订单数据不会丢失）
+      - backend-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - baji-net
+
+  # ===== 前端 Web 服务 =====
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: baji-frontend
+    restart: always
+    ports:
+      # 对外暴露 80 端口
+      # 如需 HTTPS，建议在此端口前面加一层 Nginx/Caddy 反代处理 SSL
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - baji-net
+
+# 数据卷：SQLite 数据库文件
+volumes:
+  backend-data:
+
+# 内部网络：前后端容器通信
+networks:
+  baji-net:
+    driver: bridge

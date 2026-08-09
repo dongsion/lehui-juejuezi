@@ -1,0 +1,21 @@
+# Render 部署配置（Railway 的免费替代方案）
+# 在 render.com 创建 Web Service 时使用此配置
+services:
+  - type: web
+    name: baji-backend
+    env: node
+    region: singapore
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/app.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: OWNER_TOKEN
+        sync: false
+    disk:
+      name: sqlite-data
+      mountPath: /app/data
+      sizeGB: 1
