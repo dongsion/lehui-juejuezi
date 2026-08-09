@@ -1,39 +1,38 @@
-# ========== 构建阶段 ==========
-FROM node:18-slim AS builder
+# 单阶段 Docker 构建 - 确保 better-sqlite3 原生模块正确编译
+FROM node:18-slim
+
+# 安装 better-sqlite3 编译所需的构建工具
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# 复制所有 package 文件和 lock 文件
+# 复制根目录 package.json
 COPY package.json ./
-COPY frontend/package.json frontend/package-lock.json ./frontend/
-COPY backend/package.json backend/package-lock.json ./backend/
 
-# 安装前端依赖并构建
+# 复制前端并构建
+COPY frontend/package.json frontend/package-lock.json ./frontend/
 RUN cd frontend && npm ci
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run build
 
-# 安装后端生产依赖
+# 安装后端依赖（含 better-sqlite3，会在容器内原生编译）
+COPY backend/package.json backend/package-lock.json ./backend/
 RUN cd backend && npm ci --omit=dev
 
-# ========== 运行阶段 ==========
-FROM node:18-slim AS runner
+# 复制后端源码
+COPY backend/ ./backend/
 
-WORKDIR /app
-
-# 复制后端源码和依赖
-COPY --from=builder /app/backend ./backend
-
-# 复制前端构建产物
-COPY --from=builder /app/frontend/dist ./frontend/dist
-
-# 创建数据目录
+# 创建数据目录并设置权限
 RUN mkdir -p /app/backend/data
 
 ENV NODE_ENV=production
-ENV PORT=3001
+# PORT 由 Railway 注入，不硬编码
 ENV DATA_DIR=/app/backend/data
 
-EXPOSE 3001
+# Railway 会自动检测端口，不需要 EXPOSE
 
 CMD ["node", "backend/src/app.js"]
