@@ -145,10 +145,11 @@ import { useOrderNotify } from '../../composables/useOrderNotify'
 
 const router = useRouter()
 
-// 老板端令牌
-// 开发环境使用默认值，生产环境通过 Vite 环境变量注入（.env.production）
-const OWNER_PASSWORD = import.meta.env.VITE_OWNER_TOKEN || 'baji-owner-2026'
+// 老板端令牌存储 key
+// 密码由后端环境变量 OWNER_TOKEN 控制，前端不硬编码
+// 用户输入密码后直接作为 token 发送给后端验证
 const TOKEN_KEY = 'owner_token'
+const DEFAULT_OWNER_PASSWORD = 'baji-owner-2026'
 
 const authed = ref(false)
 const password = ref('')
@@ -167,13 +168,27 @@ function onOrderReceived() {
 function onOrderPaid() {
   loadStats()
 }
+
 onMounted(() => {
   window.addEventListener('order:received', onOrderReceived)
   window.addEventListener('order:paid', onOrderPaid)
+  // 检查 localStorage 中是否已有 token，自动登录并验证
+  const token = localStorage.getItem(TOKEN_KEY)
+  if (token) {
+    // 尝试用已有 token 加载数据，验证是否有效
+    loadStats().then(() => {
+      authed.value = true
+      connect()
+    }).catch(() => {
+      // token 无效，清除
+      localStorage.removeItem(TOKEN_KEY)
+    })
+  }
 })
 onUnmounted(() => {
   window.removeEventListener('order:received', onOrderReceived)
   window.removeEventListener('order:paid', onOrderPaid)
+  disconnect()
 })
 
 const todayStr = computed(() => {
@@ -193,24 +208,36 @@ function rankClass(idx) {
   return ''
 }
 
-// 登录验证
-function handleLogin() {
+// 登录验证（通过后端 API 验证密码）
+async function handleLogin() {
   if (!password.value) {
     showToast('请输入密码')
     return
   }
-  if (password.value === OWNER_PASSWORD) {
-    // 存入与后端 OWNER_TOKEN 一致的明文令牌
-    // （EventSource 无法传 header，SSE 端点通过 query 参数读取此 token）
-    localStorage.setItem(TOKEN_KEY, OWNER_PASSWORD)
+  loading.value = true
+  try {
+    // 先把密码存入 localStorage，API 请求拦截器会读取它作为 token
+    localStorage.setItem(TOKEN_KEY, password.value)
+    // 调用需要认证的接口验证密码是否正确
+    const data = await getAdminStats()
+    stats.value = data.stats || data.data || data || {}
+    hotDishes.value =
+      stats.value.hot_dishes || stats.value.top_dishes || data.hot_dishes || []
     authed.value = true
     password.value = ''
     showToast({ type: 'success', message: '登录成功' })
-    loadStats()
     // 登录后建立 SSE 实时推送连接
     connect()
-  } else {
-    showToast('密码错误')
+  } catch (e) {
+    // 密码错误，清除无效 token
+    localStorage.removeItem(TOKEN_KEY)
+    if (e.response?.status === 401 || e.response?.status === 403) {
+      showToast('密码错误')
+    } else {
+      showToast('连接失败，请检查网络')
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -244,23 +271,14 @@ async function loadStats() {
       // token 失效，回到登录
       localStorage.removeItem(TOKEN_KEY)
       authed.value = false
-      showToast('登录已过期，请重新登录')
     } else {
       loadError.value = e.response?.data?.message || '数据加载失败'
     }
+    throw e // 重新抛出错误，让调用方知道加载失败
   } finally {
     loading.value = false
   }
 }
-
-onMounted(() => {
-  // 检查 localStorage 中是否已有 token
-  const token = localStorage.getItem(TOKEN_KEY)
-  if (token) {
-    authed.value = true
-    loadStats()
-  }
-})
 </script>
 
 <style scoped>

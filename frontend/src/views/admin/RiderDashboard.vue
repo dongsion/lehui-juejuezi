@@ -200,8 +200,8 @@ import { useRiderNotify } from '../../composables/useRiderNotify'
 
 defineOptions({ name: 'RiderDashboard' })
 
-// 骑手端令牌
-const RIDER_PASSWORD = import.meta.env.VITE_RIDER_TOKEN || 'baji-rider-2026'
+// 骑手端令牌存储 key
+// 密码由后端环境变量 RIDER_TOKEN 控制，前端不硬编码
 const TOKEN_KEY = 'rider_token'
 
 const authed = ref(false)
@@ -276,21 +276,31 @@ function toggleExpand(id) {
   expandedId.value = expandedId.value === id ? null : id
 }
 
-// 登录
-function handleLogin() {
+// 登录（通过后端 API 验证密码）
+async function handleLogin() {
   if (!password.value) {
     showToast('请输入密码')
     return
   }
-  if (password.value === RIDER_PASSWORD) {
-    localStorage.setItem(TOKEN_KEY, RIDER_PASSWORD)
+  loading.value = true
+  try {
+    localStorage.setItem(TOKEN_KEY, password.value)
+    const status = activeTab.value === 'all' ? '' : activeTab.value
+    const data = await getRiderOrders(status)
+    orders.value = data.orders || data.data || data || []
     authed.value = true
     password.value = ''
     showToast({ type: 'success', message: '登录成功' })
-    loadOrders()
     connect()
-  } else {
-    showToast('密码错误')
+  } catch (e) {
+    localStorage.removeItem(TOKEN_KEY)
+    if (e.response?.status === 401 || e.response?.status === 403) {
+      showToast('密码错误')
+    } else {
+      showToast('连接失败，请检查网络')
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -316,12 +326,12 @@ async function loadOrders() {
     orders.value = data.orders || data.data || data || []
   } catch (e) {
     if (e.response?.status === 401 || e.response?.status === 403) {
-      showToast('请先登录')
       authed.value = false
       localStorage.removeItem(TOKEN_KEY)
     } else {
       showToast(e.response?.data?.message || '加载失败')
     }
+    throw e
   } finally {
     loading.value = false
   }
@@ -367,17 +377,22 @@ onMounted(() => {
   window.addEventListener('rider:received', onOrderReceived)
   window.addEventListener('rider:paid', onOrderPaid)
 
-  // 检查是否已登录
+  // 检查是否已登录，自动验证 token
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
-    authed.value = true
-    loadOrders()
+    loadOrders().then(() => {
+      authed.value = true
+      connect()
+    }).catch(() => {
+      localStorage.removeItem(TOKEN_KEY)
+    })
   }
 })
 
 onUnmounted(() => {
   window.removeEventListener('rider:received', onOrderReceived)
   window.removeEventListener('rider:paid', onOrderPaid)
+  disconnect()
 })
 </script>
 

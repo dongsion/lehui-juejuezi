@@ -1,10 +1,37 @@
-# 忽略不需要进入 Docker 镜像的文件
+# 依赖目录（构建阶段会重新安装）
 node_modules
-dist
+*/node_modules
+
+# 本机构建产物（构建阶段会重新构建）
+frontend/dist
+
+# Git 相关
 .git
 .gitignore
+
+# 文档和临时文件
 *.md
+deploy-guide.html
 .env
 .env.local
-data/*.db-shm
-data/*.db-wal
+.env.*.local
+
+# 数据库文件（生产环境在容器内创建）
+*.db
+*.db-shm
+*.db-wal
+backend/data/*.db
+backend/data/*.db-shm
+backend/data/*.db-wal
+
+# Docker 相关
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# 编辑器文件
+.vscode
+.idea
+.DS_Store
+*.log
+npm-debug.log*
