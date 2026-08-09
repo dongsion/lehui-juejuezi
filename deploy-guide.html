@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>部署上线指南 - 小暖咖啡馆点单系统</title>
+  <style>
+    :root {
+      --bg: #f8f5f0;
+      --bg2: #ffffff;
+      --ink: #2d1b0e;
+      --muted: #8a7560;
+      --rule: #e6ddd0;
+      --accent: #C2623F;
+      --accent2: #D9886A;
+      --green: #67B279;
+      --blue: #1677FF;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      padding: 48px 20px 40px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .hero .badges {
+      margin-top: 16px;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+
+    /* Sections */
+    section {
+      padding: 32px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    section:last-of-type { border-bottom: none; }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-num {
+      background: var(--accent);
+      color: #fff;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 20px 0 8px;
+      color: var(--accent);
+    }
+
+    p { margin-bottom: 10px; }
+
+    /* Code blocks */
+    .code-block {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 16px 20px;
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin: 12px 0;
+      position: relative;
+    }
+
+    .code-block .copy-hint {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 11px;
+      color: #585b70;
+    }
+
+    .code-block .comment { color: #6c7086; }
+    .code-block .cmd { color: #89b4fa; }
+    .code-block .str { color: #a6e3a1; }
+    .code-block .var { color: #fab387; }
+
+    /* Info cards */
+    .card {
+      background: var(--bg2);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    .card-tip {
+      border-left: 4px solid var(--green);
+      background: #f0faf2;
+    }
+
+    .card-warn {
+      border-left: 4px solid #f0a000;
+      background: #fffbeb;
+    }
+
+    .card-info {
+      border-left: 4px solid var(--blue);
+      background: #eff6ff;
+    }
+
+    /* Steps list */
+    .steps-list {
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .steps-list > li {
+      counter-increment: step;
+      padding: 10px 0 10px 36px;
+      position: relative;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .steps-list > li:last-child { border-bottom: none; }
+
+    .steps-list > li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 24px;
+      height: 24px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    th {
+      background: var(--bg2);
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    td code {
+      background: #f0ebe5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    /* Platform cards */
+    .platform-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .platform-card {
+      border: 2px solid var(--rule);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .platform-card.recommended {
+      border-color: var(--accent);
+      background: #fdf6f2;
+    }
+
+    .platform-card .name {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .platform-card .desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .platform-card .price {
+      font-size: 13px;
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .platform-card .tag {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+    }
+
+    /* Final */
+    .final-check {
+      background: var(--bg2);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .final-check .check-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .final-check h3 {
+      color: var(--ink);
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    /* Env var table special */
+    .env-table td:first-child { width: 35%; }
+
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      .platform-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>部署上线指南</h1>
+  <p>小暖咖啡馆点单收银系统 — 单应用部署模式</p>
+  <div class="badges">
+    <span class="badge">Vue3 + Express</span>
+    <span class="badge">SQLite 数据库</span>
+    <span class="badge">SSE 实时推送</span>
+    <span class="badge">个人收款码支付</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 架构说明 -->
+  <section>
+    <h2><span class="step-num">0</span> 部署架构</h2>
+    <p>本项目采用<strong>单应用部署模式</strong>：后端 Express 同时提供 API 服务和前端静态文件托管。只需部署一个服务，无需分别管理前端和后端。</p>
+
+    <div class="card card-info">
+      <strong>为什么选择单应用？</strong>
+      <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+        <li>只需一个部署平台、一个域名、一份配置</li>
+        <li>前端和后端同源，无 CORS 跨域问题</li>
+        <li>SSE 实时推送在同一域名下工作最稳定</li>
+        <li>部署、维护、排查问题都更简单</li>
+      </ul>
+    </div>
+
+    <h3>平台选择</h3>
+    <div class="platform-grid">
+      <div class="platform-card recommended">
+        <span class="tag">推荐</span>
+        <div class="name">Railway</div>
+        <div class="desc">一键部署，支持持久化卷</div>
+        <div class="price">免费试用 $5 额度</div>
+      </div>
+      <div class="platform-card">
+        <div class="name">Render</div>
+        <div class="desc">免费套餐可用</div>
+        <div class="price">免费层 750h/月</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 1: GitHub -->
+  <section>
+    <h2><span class="step-num">1</span> 推送代码到 GitHub</h2>
+    <p>首先需要把项目代码推送到 GitHub 仓库，Railway / Render 会从 GitHub 拉取代码自动构建。</p>
+
+    <h3>1.1 创建 GitHub 仓库</h3>
+    <ol class="steps-list">
+      <li>打开 <a href="https://github.com/new" target="_blank">github.com/new</a> 创建新仓库</li>
+      <li>仓库名填 <code>baji-ordering</code>（随意）</li>
+      <li>选择 <strong>Private</strong>（私有仓库更安全）</li>
+      <li>不要勾选 "Add a README"</li>
+      <li>点击 <strong>Create repository</strong></li>
+    </ol>
+
+    <h3>1.2 推送代码</h3>
+    <p>在项目目录下执行以下命令（将 <code>你的用户名</code> 替换为你的 GitHub 用户名）：</p>
+    <div class="code-block">
+<span class="comment"># 进入项目目录</span>
+<span class="cmd">cd</span> baji-clone
+
+<span class="comment"># 关联远程仓库</span>
+<span class="cmd">git</span> remote add origin https://github.com/<span class="var">你的用户名</span>/baji-ordering.git
+
+<span class="comment"># 推送到 GitHub</span>
+<span class="cmd">git</span> branch -M main
+<span class="cmd">git</span> push -u origin main
+    </div>
+
+    <div class="card card-tip">
+      <strong>提示：</strong>如果提示输入密码，GitHub 已不支持密码认证，请使用 <a href="https://github.com/settings/tokens" target="_blank">Personal Access Token</a> 作为密码。
+    </div>
+  </section>
+
+  <!-- Step 2: Railway -->
+  <section>
+    <h2><span class="step-num">2</span> 部署到 Railway</h2>
+
+    <h3>2.1 创建项目</h3>
+    <ol class="steps-list">
+      <li>打开 <a href="https://railway.app/new" target="_blank">railway.app/new</a>（需注册/登录）</li>
+      <li>选择 <strong>Deploy from GitHub repo</strong></li>
+      <li>授权 Railway 访问你的 GitHub，选择刚才创建的 <code>baji-ordering</code> 仓库</li>
+      <li>点击 <strong>Deploy Now</strong></li>
+    </ol>
+
+    <h3>2.2 配置环境变量</h3>
+    <p>在 Railway 项目的 <strong>Variables</strong> 标签页添加以下环境变量：</p>
+
+    <table class="env-table">
+      <thead>
+        <tr>
+          <th>变量名</th>
+          <th>值</th>
+          <th>说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>OWNER_TOKEN</code></td>
+          <td><code>my-secret-2026</code></td>
+          <td>商家管理端密码，<strong>务必改成你自己的复杂字符串</strong></td>
+        </tr>
+        <tr>
+          <td><code>DATA_DIR</code></td>
+          <td><code>/data</code></td>
+          <td>SQLite 数据库存放路径（配合持久化卷）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>2.3 添加持久化卷（重要）</h3>
+    <p>Railway 默认使用临时文件系统，重启后数据会丢失。必须添加持久化卷来保存订单数据：</p>
+    <ol class="steps-list">
+      <li>进入项目的 <strong>Settings</strong> 标签页</li>
+      <li>找到 <strong>Volumes</strong> → 点击 <strong>New Volume</strong></li>
+      <li>Mount Path 填入 <code>/data</code>（与 DATA_DIR 一致）</li>
+      <li>Size 选择 <code>1 GB</code>（免费额度足够）</li>
+      <li>点击 <strong>Add Volume</strong></li>
+    </ol>
+
+    <div class="card card-warn">
+      <strong>注意：</strong>不添加持久化卷的话，每次 Railway 重启后所有订单和菜品数据都会丢失！
+    </div>
+
+    <h3>2.4 生成域名</h3>
+    <ol class="steps-list">
+      <li>进入 <strong>Settings</strong> → <strong>Networking</strong></li>
+      <li>点击 <strong>Generate Domain</strong></li>
+      <li>Railway 会分配一个域名，如 <code>baji-ordering.up.railway.app</code></li>
+      <li>等待构建完成后，访问该域名即可使用</li>
+    </ol>
+
+    <p>Railway 会自动执行以下流程：</p>
+    <div class="code-block">
+<span class="comment"># 自动构建流程（railway.json 配置）</span>
+<span class="cmd">npm</span> run install:frontend   <span class="comment"># 安装前端依赖</span>
+<span class="cmd">npm</span> run build:frontend     <span class="comment"># 构建前端 → frontend/dist</span>
+<span class="cmd">npm</span> run install:backend    <span class="comment"># 安装后端依赖（含 better-sqlite3 编译）</span>
+
+<span class="comment"># 启动命令</span>
+node backend/src/app.js         <span class="comment"># 同时提供 API + 前端静态文件</span>
+    </div>
+  </section>
+
+  <!-- Step 3: 验证 -->
+  <section>
+    <h2><span class="step-num">3</span> 验证部署</h2>
+    <p>部署完成后，用分配的域名进行以下验证：</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>验证项</th>
+          <th>访问地址</th>
+          <th>预期结果</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>健康检查</td>
+          <td><code>你的域名/api/health</code></td>
+          <td>返回 <code>{"status":"ok"}</code></td>
+        </tr>
+        <tr>
+          <td>顾客点单页</td>
+          <td><code>你的域名/</code></td>
+          <td>显示菜单页面</td>
+        </tr>
+        <tr>
+          <td>商家管理端</td>
+          <td><code>你的域名/admin</code></td>
+          <td>显示登录页，输入 OWNER_TOKEN 登录</td>
+        </tr>
+        <tr>
+          <td>菜单接口</td>
+          <td><code>你的域名/api/menu</code></td>
+          <td>返回分类和菜品 JSON</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Step 4: 替换收款码 -->
+  <section>
+    <h2><span class="step-num">4</span> 替换你的收款码</h2>
+    <p>系统自带的是示例收款码图片，正式使用前必须替换成你自己的微信/支付宝收款码：</p>
+
+    <ol class="steps-list">
+      <li>准备你的微信收款码和支付宝收款码图片</li>
+      <li>微信码命名为 <code>wechat-qr.png</code>，支付宝码命名为 <code>alipay-qr.jpeg</code></li>
+      <li>替换 <code>frontend/public/</code> 目录下的同名文件</li>
+      <li>提交并推送代码：<code>git add . && git commit -m "更新收款码" && git push</code></li>
+      <li>Railway 会自动重新构建部署</li>
+    </ol>
+
+    <div class="card card-warn">
+      <strong>重要提醒：</strong>请确保收款码是<strong>收款二维码</strong>（别人扫码后输入金额付款），而不是付款码。微信可在「收付款 → 二维码收款」中找到。
+    </div>
+  </section>
+
+  <!-- Step 5: 日常使用 -->
+  <section>
+    <h2><span class="step-num">5</span> 日常使用方式</h2>
+
+    <h3>在微信群推广</h3>
+    <div class="card">
+      <p><strong>顾客端链接：</strong>直接把你的域名发到微信群里即可</p>
+      <div class="code-block">
+https://baji-ordering.up.railway.app/
+      </div>
+      <p style="margin-top: 12px;">顾客点击链接 → 浏览菜单 → 下单 → 扫码支付 → 点击「我已支付」</p>
+    </div>
+
+    <h3>商家接收订单</h3>
+    <div class="card">
+      <p><strong>商家管理端：</strong>在手机或电脑浏览器打开</p>
+      <div class="code-block">
+https://baji-ordering.up.railway.app/admin
+      </div>
+      <p style="margin-top: 12px;">输入 OWNER_TOKEN 登录 → 保持页面打开 → 有新订单时自动响起提示音 + 弹窗通知</p>
+    </div>
+
+    <div class="card card-tip">
+      <strong>使用技巧：</strong>
+      <ul style="margin: 8px 0 0 20px; font-size: 14px;">
+        <li>商家端页面保持手机/电脑浏览器常开，有新订单会自动提醒</li>
+        <li>顾客扫码支付后点击「我已支付」，你这边会收到通知</li>
+        <li>请到微信/支付宝核对实际到账后再确认订单</li>
+        <li>在管理端可以查看订单列表、经营统计、管理菜品上下架</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Alternative: Render -->
+  <section>
+    <h2>备选方案：Render 部署</h2>
+    <p>如果 Railway 免费额度用完，可以换用 Render（有永久免费层）：</p>
+
+    <ol class="steps-list">
+      <li>打开 <a href="https://render.com" target="_blank">render.com</a> 注册登录</li>
+      <li>点击 <strong>New +</strong> → <strong>Web Service</strong></li>
+      <li>连接 GitHub 仓库，选择 <code>baji-ordering</code></li>
+      <li>配置如下：
+        <table style="margin-top: 8px;">
+          <tr><td>Runtime</td><td>Node</td></tr>
+          <tr><td>Build Command</td><td><code>npm run build</code></td></tr>
+          <tr><td>Start Command</td><td><code>node backend/src/app.js</code></td></tr>
+          <tr><td>Environment Variables</td><td>添加 <code>OWNER_TOKEN</code> 和 <code>DATA_DIR=/data</code></td></tr>
+        </table>
+      </li>
+      <li>在 <strong>Disk</strong> 标签添加持久化磁盘：Mount Path = <code>/data</code>，Size = 1GB</li>
+      <li>点击 <strong>Create Web Service</strong></li>
+    </ol>
+
+    <div class="card card-info">
+      <strong>Render 免费层限制：</strong>15 分钟无请求会自动休眠，下次访问时需等待约 30 秒冷启动。如需 7×24 在线，建议升级为付费层（$7/月起）。
+    </div>
+  </section>
+
+  <!-- Final check -->
+  <div class="final-check">
+    <div class="check-icon">✅</div>
+    <h3>部署完成检查清单</h3>
+    <table style="text-align: left;">
+      <tr><td>☐</td><td>代码已推送到 GitHub</td></tr>
+      <tr><td>☐</td><td>Railway/Render 项目已创建并构建成功</td></tr>
+      <tr><td>☐</td><td>环境变量 OWNER_TOKEN 已设置</td></tr>
+      <tr><td>☐</td><td>持久化卷已挂载（DATA_DIR=/data）</td></tr>
+      <tr><td>☐</td><td>域名已生成并可访问</td></tr>
+      <tr><td>☐</td><td>/api/health 返回正常</td></tr>
+      <tr><td>☐</td><td>收款码已替换为你自己的</td></tr>
+      <tr><td>☐</td><td>商家管理端可正常登录</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<footer>
+  小暖咖啡馆点单收银系统 · 部署指南<br>
+  如遇问题请检查构建日志和健康检查状态
+</footer>
+
+</body>
+</html>
