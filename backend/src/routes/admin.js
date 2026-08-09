@@ -8,7 +8,7 @@
 const express = require('express');
 const { db } = require('../database');
 const { ownerAuth } = require('../middleware/auth');
-const { addMerchantClient, broadcastMenuUpdate } = require('../services/notify');
+const { addMerchantClient, broadcastMenuUpdate, broadcastOrderStatusChange } = require('../services/notify');
 
 const router = express.Router();
 
@@ -83,6 +83,7 @@ router.get('/orders', (req, res) => {
     return {
       id: order.id,
       order_no: order.order_no,
+      pickup_code: order.pickup_code,
       status: order.status,
       total_amount: order.total_amount,
       items: items,
@@ -237,6 +238,105 @@ router.post('/categories', (req, res) => {
     id: result.lastInsertRowid,
     message: '分类创建成功',
   });
+});
+
+/**
+ * PUT /api/admin/orders/:id/status
+ * 商家更新订单状态（堂食订单可直接标记完成，或取消订单）
+ * 请求体：{ status: 'completed' | 'cancelled' }
+ */
+router.put('/orders/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!['completed', 'cancelled'].includes(status)) {
+    return res.status(400).json({ code: 400, message: 'status 必须为 completed 或 cancelled' });
+  }
+
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+  if (!order) {
+    return res.status(404).json({ code: 404, message: '订单不存在' });
+  }
+
+  // 已完成/已取消的订单不能重复操作
+  if (['completed', 'cancelled'].includes(order.status)) {
+    return res.status(400).json({ code: 400, message: `订单已${order.status === 'completed' ? '完成' : '取消'}，无法重复操作` });
+  }
+
+  // 取消订单：仅未支付或已确认未配送的订单可取消
+  if (status === 'cancelled' && order.status === 'delivering') {
+    return res.status(400).json({ code: 400, message: '配送中的订单不能取消，请先联系骑手' });
+  }
+
+  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, id);
+
+  // 推送状态变更通知
+  broadcastOrderStatusChange({
+    order_id: id,
+    order_no: order.order_no,
+    status: status,
+  });
+
+  res.json({
+    order_id: id,
+    order_no: order.order_no,
+    status: status,
+    message: status === 'completed' ? '订单已完成' : '订单已取消',
+  });
+});
+
+/**
+ * PUT /api/admin/categories/:id
+ * 更新分类（名称、排序、启用状态）
+ */
+router.put('/categories/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, sort_order, is_active } = req.body;
+
+  const cat = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
+  if (!cat) {
+    return res.status(404).json({ code: 404, message: '分类不存在' });
+  }
+
+  db.prepare(`
+    UPDATE categories
+    SET name = ?, sort_order = ?, is_active = ?
+    WHERE id = ?
+  `).run(
+    name !== undefined ? name : cat.name,
+    sort_order !== undefined ? sort_order : cat.sort_order,
+    is_active !== undefined ? is_active : cat.is_active,
+    id
+  );
+
+  broadcastMenuUpdate('update');
+
+  res.json({ message: '分类更新成功' });
+});
+
+/**
+ * DELETE /api/admin/categories/:id
+ * 删除分类（分类下不能有菜品）
+ */
+router.delete('/categories/:id', (req, res) => {
+  const { id } = req.params;
+
+  const cat = db.prepare('SELECT id FROM categories WHERE id = ?').get(id);
+  if (!cat) {
+    return res.status(404).json({ code: 404, message: '分类不存在' });
+  }
+
+  // 检查分类下是否有菜品
+  const dishCount = db.prepare('SELECT COUNT(*) as cnt FROM dishes WHERE category_id = ?').get(id);
+  if (dishCount.cnt > 0) {
+    return res.status(400).json({ code: 400, message: '该分类下还有菜品，无法删除' });
+  }
+
+  db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+
+  broadcastMenuUpdate('delete');
+
+  res.json({ message: '分类删除成功' });
 });
 
 /**

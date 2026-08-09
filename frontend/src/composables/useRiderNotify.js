@@ -8,7 +8,7 @@
  *       3. 显示页面内通知弹窗
  *       4. 触发自定义事件让订单列表自动刷新
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { showToast, showNotify } from 'vant'
 
 export function useRiderNotify() {
@@ -179,9 +179,7 @@ export function useRiderNotify() {
     connected.value = false
   }
 
-  onMounted(() => {
-    connect()
-  })
+  // 注意：不在 onMounted 自动连接，由调用方在登录成功后手动 connect()
 
   onUnmounted(() => {
     disconnect()

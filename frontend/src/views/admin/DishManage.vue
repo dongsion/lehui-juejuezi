@@ -8,6 +8,7 @@
       placeholder
     >
       <template #right>
+        <van-icon name="apps-o" size="20" color="#fff" @click="showCategoryManage = true" style="margin-right: 16px" />
         <van-icon name="plus" size="20" color="#fff" @click="openAdd" />
       </template>
     </van-nav-bar>
@@ -152,6 +153,68 @@
         title="选择分类"
       />
     </van-popup>
+
+    <!-- 分类管理弹窗 -->
+    <van-popup
+      v-model:show="showCategoryManage"
+      round
+      position="bottom"
+      :style="{ maxHeight: '80%' }"
+      closeable
+      close-icon-position="top-left"
+    >
+      <div class="category-manage-wrap">
+        <div class="form-title">分类管理</div>
+
+        <div class="add-category-row">
+          <van-field
+            v-model="newCategoryName"
+            placeholder="输入新分类名称"
+            :border="false"
+            class="category-input"
+            @keyup.enter="handleAddCategory"
+          />
+          <van-button type="primary" size="small" round @click="handleAddCategory">
+            添加
+          </van-button>
+        </div>
+
+        <div class="category-list">
+          <div
+            v-for="cat in categories"
+            :key="cat.id"
+            class="category-manage-item"
+          >
+            <div class="cmi-name">
+              {{ cat.name }}
+              <van-tag v-if="!cat.is_active" type="default" size="mini" plain style="margin-left: 6px">
+                已停用
+              </van-tag>
+            </div>
+            <div class="cmi-count">{{ cat.dishes?.length || 0 }} 个菜品</div>
+            <div class="cmi-actions">
+              <van-button
+                size="mini"
+                plain
+                :type="cat.is_active ? 'default' : 'primary'"
+                @click="handleToggleCategory(cat)"
+              >
+                {{ cat.is_active ? '停用' : '启用' }}
+              </van-button>
+              <van-button
+                size="mini"
+                plain
+                type="danger"
+                :disabled="(cat.dishes?.length || 0) > 0"
+                @click="handleDeleteCategory(cat)"
+              >
+                删除
+              </van-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </van-popup>
   </div>
 </template>
 
@@ -163,7 +226,10 @@ import {
   getAdminDishes,
   addDish,
   updateDish,
-  deleteDish
+  deleteDish,
+  addCategory,
+  updateCategory,
+  deleteCategory
 } from '../../api'
 
 const router = useRouter()
@@ -173,6 +239,8 @@ const refreshing = ref(false)
 const categories = ref([])
 const showForm = ref(false)
 const showCategoryPicker = ref(false)
+const showCategoryManage = ref(false)
+const newCategoryName = ref('')
 const editing = ref(false)
 const editingId = ref(null)
 
@@ -319,6 +387,58 @@ function handleDelete(dish) {
     .catch(() => {})
 }
 
+// ============ 分类管理 ============
+
+// 添加分类
+async function handleAddCategory() {
+  const name = newCategoryName.value.trim()
+  if (!name) {
+    showToast('请输入分类名称')
+    return
+  }
+  try {
+    await addCategory({ name })
+    showToast({ type: 'success', message: '分类添加成功' })
+    newCategoryName.value = ''
+    loadDishes()
+  } catch (e) {
+    showToast(e.response?.data?.message || '添加失败')
+  }
+}
+
+// 启用/停用分类
+async function handleToggleCategory(cat) {
+  try {
+    await updateCategory(cat.id, { is_active: cat.is_active ? 0 : 1 })
+    showToast({ type: 'success', message: cat.is_active ? '已停用' : '已启用' })
+    loadDishes()
+  } catch (e) {
+    showToast(e.response?.data?.message || '操作失败')
+  }
+}
+
+// 删除分类
+function handleDeleteCategory(cat) {
+  if ((cat.dishes?.length || 0) > 0) {
+    showToast('该分类下还有菜品，无法删除')
+    return
+  }
+  showConfirmDialog({
+    title: '确认删除',
+    message: `确定要删除分类「${cat.name}」吗？`
+  })
+    .then(async () => {
+      try {
+        await deleteCategory(cat.id)
+        showToast({ type: 'success', message: '分类已删除' })
+        loadDishes()
+      } catch (e) {
+        showToast(e.response?.data?.message || '删除失败')
+      }
+    })
+    .catch(() => {})
+}
+
 onMounted(() => {
   loadDishes()
 })
@@ -452,5 +572,63 @@ onMounted(() => {
   padding: 12px 0 24px;
   font-size: 12px;
   color: var(--color-text-placeholder);
+}
+
+/* 分类管理弹窗 */
+.category-manage-wrap {
+  padding: 20px 0;
+}
+
+.add-category-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 16px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.category-input {
+  flex: 1;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.category-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 8px 16px;
+}
+
+.category-manage-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-divider);
+  gap: 10px;
+}
+
+.cmi-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+}
+
+.cmi-count {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.cmi-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cmi-actions .van-button {
+  width: 48px;
 }
 </style>

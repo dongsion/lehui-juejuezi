@@ -40,12 +40,17 @@
           <!-- 卡片头部 -->
           <div class="oc-header" @click="toggleExpand(order.id)">
             <div class="oc-left">
-              <div class="oc-no">订单号：{{ order.order_no || order.id }}</div>
+              <div class="oc-no">
+                订单号：{{ order.order_no || order.id }}
+                <van-tag v-if="order.pickup_code" type="primary" size="mini" plain style="margin-left: 6px">
+                  取餐码 {{ order.pickup_code }}
+                </van-tag>
+              </div>
               <div class="oc-time">{{ formatTime(order.created_at) }}</div>
             </div>
             <div class="oc-right">
-              <van-tag :type="statusTagType(order.payment_status || order.status)" plain size="medium">
-                {{ statusText(order.payment_status || order.status) }}
+              <van-tag :type="statusTagType(order.payment_status || order.status, order.status)" plain size="medium">
+                {{ statusText(order.payment_status || order.status, order.status) }}
               </van-tag>
               <van-icon
                 :name="expandedId === order.id ? 'arrow-up' : 'arrow-down'"
@@ -58,11 +63,24 @@
 
           <!-- 摘要（始终显示） -->
           <div class="oc-summary" @click="toggleExpand(order.id)">
-            <div class="oc-dishes">{{ dishSummary(order) }}</div>
+            <div class="oc-dishes">
+              <van-tag v-if="order.dine_type" plain size="mini" type="primary" style="margin-right: 6px">
+                {{ order.dine_type === 'takeout' ? '外带' : '堂食' }}
+              </van-tag>
+              <van-tag v-if="order.table_number" plain size="mini" type="warning" style="margin-right: 6px">
+                桌号{{ order.table_number }}
+              </van-tag>
+              {{ dishSummary(order) }}
+            </div>
             <div class="oc-amount">
               <span class="oc-amount-label">合计</span>
               <span class="oc-amount-value">¥{{ formatPrice(order.total_amount || order.total_price || order.total) }}</span>
             </div>
+          </div>
+
+          <!-- 备注 -->
+          <div v-if="order.customer_note" class="oc-note">
+            <van-icon name="comment-o" size="12" /> 备注：{{ order.customer_note }}
           </div>
 
           <!-- 展开详情 -->
@@ -86,6 +104,25 @@
               >
                 查看详情
               </van-button>
+              <van-button
+                v-if="(order.status === 'confirmed' || order.status === 'delivering') && order.payment_status === 'paid'"
+                size="small"
+                type="success"
+                :loading="actionId === order.id"
+                @click="handleComplete(order)"
+              >
+                完成订单
+              </van-button>
+              <van-button
+                v-if="order.status !== 'completed' && order.status !== 'cancelled'"
+                size="small"
+                plain
+                type="danger"
+                :loading="actionId === order.id"
+                @click="handleCancel(order)"
+              >
+                取消订单
+              </van-button>
             </div>
           </div>
         </div>
@@ -101,8 +138,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
-import { getAdminOrders } from '../../api'
+import { showToast, showConfirmDialog } from 'vant'
+import { getAdminOrders, updateAdminOrderStatus } from '../../api'
 
 const router = useRouter()
 
@@ -111,9 +148,16 @@ const loading = ref(false)
 const refreshing = ref(false)
 const orders = ref([])
 const expandedId = ref(null)
+const actionId = ref(null)
 
-// 状态文字映射
-function statusText(status) {
+// 状态文字映射（综合 payment_status 和 status）
+function statusText(paymentStatus, status) {
+  if (status === 'cancelled') return '已取消'
+  if (status === 'completed') return '已完成'
+  if (status === 'delivering') return '配送中'
+  if (status === 'confirmed' && paymentStatus === 'paid') return '待配送'
+  if (paymentStatus === 'paid') return '已支付'
+  if (paymentStatus === 'unpaid') return '待支付'
   const map = {
     pending: '待支付',
     unpaid: '待支付',
@@ -121,19 +165,18 @@ function statusText(status) {
     completed: '已完成',
     cancelled: '已取消'
   }
-  return map[status] || status
+  return map[paymentStatus] || paymentStatus
 }
 
 // 状态标签类型
-function statusTagType(status) {
-  const map = {
-    pending: 'warning',
-    unpaid: 'warning',
-    paid: 'primary',
-    completed: 'success',
-    cancelled: 'danger'
-  }
-  return map[status] || 'default'
+function statusTagType(paymentStatus, status) {
+  if (status === 'cancelled') return 'danger'
+  if (status === 'completed') return 'success'
+  if (status === 'delivering') return 'primary'
+  if (status === 'confirmed') return 'primary'
+  if (paymentStatus === 'paid') return 'primary'
+  if (paymentStatus === 'pending' || paymentStatus === 'unpaid') return 'warning'
+  return 'default'
 }
 
 function formatPrice(val) {
@@ -164,6 +207,50 @@ function toggleExpand(id) {
 // 跳转详情
 function goDetail(id) {
   router.push(`/order/${id}`)
+}
+
+// 完成订单
+function handleComplete(order) {
+  showConfirmDialog({
+    title: '确认完成',
+    message: `确定要将订单「${order.order_no || order.id}」标记为已完成吗？`
+  })
+    .then(async () => {
+      actionId.value = order.id
+      try {
+        await updateAdminOrderStatus(order.id, 'completed')
+        showToast({ type: 'success', message: '订单已完成' })
+        loadOrders()
+      } catch (e) {
+        showToast(e.response?.data?.message || '操作失败')
+      } finally {
+        actionId.value = null
+      }
+    })
+    .catch(() => {})
+}
+
+// 取消订单
+function handleCancel(order) {
+  showConfirmDialog({
+    title: '确认取消',
+    message: `确定要取消订单「${order.order_no || order.id}」吗？取消后不可恢复。`,
+    confirmButtonText: '确认取消',
+    confirmButtonColor: '#D9534F'
+  })
+    .then(async () => {
+      actionId.value = order.id
+      try {
+        await updateAdminOrderStatus(order.id, 'cancelled')
+        showToast({ type: 'success', message: '订单已取消' })
+        loadOrders()
+      } catch (e) {
+        showToast(e.response?.data?.message || '操作失败')
+      } finally {
+        actionId.value = null
+      }
+    })
+    .catch(() => {})
 }
 
 // Tab 切换
@@ -261,6 +348,18 @@ onMounted(() => {
   padding-top: 10px;
   border-top: 1px solid var(--color-divider);
   cursor: pointer;
+}
+
+.oc-note {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--color-primary-bg);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .oc-dishes {

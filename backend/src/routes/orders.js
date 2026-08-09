@@ -10,7 +10,7 @@ const { broadcastNewOrder } = require('../services/notify');
 const router = express.Router();
 
 /**
- * 生成订单编号：格式 BJ + 年月日时分秒 + 4位随机数
+ * 生成订单编号：格式 LH + 年月日时分秒 + 4位随机数
  * 便于人工识别和排序
  */
 function generateOrderNo() {
@@ -24,7 +24,16 @@ function generateOrderNo() {
     pad(now.getMinutes()) +
     pad(now.getSeconds());
   const random = Math.floor(1000 + Math.random() * 9000);
-  return `BJ${dateStr}${random}`;
+  return `LH${dateStr}${random}`;
+}
+
+/**
+ * 生成短取餐码：3位数字（001-999），循环使用
+ * 顾客凭此码到柜台取餐，方便口头叫号
+ */
+function generatePickupCode() {
+  const code = Math.floor(1 + Math.random() * 999);
+  return String(code).padStart(3, '0');
 }
 
 /**
@@ -99,20 +108,22 @@ router.post('/', (req, res) => {
   // 生成订单 ID 和订单编号
   const orderId = nanoid();
   const orderNo = generateOrderNo();
+  const pickupCode = generatePickupCode();
   const itemsJson = JSON.stringify(orderItems);
 
   // 写入数据库
   const insertOrder = db.prepare(`
-    INSERT INTO orders (id, order_no, status, total_amount, items_json, customer_note, dine_type, table_number, payment_status)
-    VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, 'unpaid')
+    INSERT INTO orders (id, order_no, pickup_code, status, total_amount, items_json, customer_note, dine_type, table_number, payment_status)
+    VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, 'unpaid')
   `);
 
-  insertOrder.run(orderId, orderNo, totalAmount, itemsJson, customer_note || null, dine_type || null, table_number || null);
+  insertOrder.run(orderId, orderNo, pickupCode, totalAmount, itemsJson, customer_note || null, dine_type || null, table_number || null);
 
   // ★ 顾客下单成功 → 实时推送给在线商家浏览器
   broadcastNewOrder({
     id: orderId,
     order_no: orderNo,
+    pickup_code: pickupCode,
     total_amount: totalAmount,
     items: orderItems,
     customer_note: customer_note || null,
@@ -124,6 +135,7 @@ router.post('/', (req, res) => {
   res.status(201).json({
     id: orderId,
     order_no: orderNo,
+    pickup_code: pickupCode,
     total_amount: totalAmount,
     status: 'pending',
   });
@@ -154,6 +166,7 @@ router.get('/:id', (req, res) => {
   res.json({
     id: order.id,
     order_no: order.order_no,
+    pickup_code: order.pickup_code,
     status: order.status,
     total_amount: order.total_amount,
     items: items,

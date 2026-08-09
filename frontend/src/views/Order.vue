@@ -125,6 +125,45 @@
         </div>
 
         <div v-else class="cart-items">
+          <!-- 就餐方式选择 -->
+          <div class="dine-type-section">
+            <div class="dine-type-label">就餐方式</div>
+            <div class="dine-type-options">
+              <div
+                class="dine-type-btn"
+                :class="{ active: dineType === 'dine_in' }"
+                @click="dineType = 'dine_in'"
+              >
+                <van-icon name="shop-o" size="18" />
+                <span>堂食</span>
+              </div>
+              <div
+                class="dine-type-btn"
+                :class="{ active: dineType === 'takeout' }"
+                @click="dineType = 'takeout'"
+              >
+                <van-icon name="bag-o" size="18" />
+                <span>外带</span>
+              </div>
+            </div>
+            <van-field
+              v-if="dineType === 'dine_in'"
+              v-model="tableNumber"
+              label="桌号"
+              placeholder="请输入桌号（选填）"
+              class="table-field"
+              :border="false"
+            />
+            <van-field
+              v-model="customerNote"
+              label="备注"
+              placeholder="口味偏好、忌口等（选填）"
+              class="note-field"
+              :border="false"
+              maxlength="50"
+            />
+          </div>
+
           <div
             v-for="item in cart.items"
             :key="item.id"
@@ -181,6 +220,9 @@ const categories = ref([])
 const activeIndex = ref(0)
 const showCartSheet = ref(false)
 const submitting = ref(false)
+const dineType = ref('dine_in')
+const tableNumber = ref('')
+const customerNote = ref('')
 
 // ============ 顾客端菜单 SSE — 监听商家修改菜单后实时刷新 ============
 let menuEventSource = null
@@ -305,12 +347,18 @@ async function handleSubmit() {
   submitting.value = true
   try {
     const payload = {
-      items: cart.toOrderPayload()
+      items: cart.toOrderPayload(),
+      dine_type: dineType.value,
+      table_number: tableNumber.value || null,
+      customer_note: customerNote.value || null,
     }
     const res = await createOrder(payload)
     const orderId = res.order_id || res.id || res.orderId
     // 下单成功后清空购物车并跳转订单详情
     cart.clear()
+    dineType.value = 'dine_in'
+    tableNumber.value = ''
+    customerNote.value = ''
     showCartSheet.value = false
     showToast({ type: 'success', message: '下单成功' })
     router.push(`/order/${orderId}`)
@@ -630,6 +678,57 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 0 16px;
+}
+
+/* 就餐方式选择 */
+.dine-type-section {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-divider);
+  margin-bottom: 8px;
+}
+
+.dine-type-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+
+.dine-type-options {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.dine-type-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--color-card);
+}
+
+.dine-type-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.table-field,
+.note-field {
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+  padding: 0 12px;
 }
 
 .cart-item {

@@ -152,8 +152,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
-import { getOrder, createPayment, getPaymentStatus } from '../api'
-import request from '../api'
+import { getOrder, createPayment, confirmPayment } from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -215,7 +214,7 @@ async function handleConfirmPay() {
   confirming.value = true
   try {
     // 调用后端确认支付接口
-    await request.post('/payment/confirm', {
+    await confirmPayment({
       order_id: route.params.orderId,
     })
 

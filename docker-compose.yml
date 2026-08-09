@@ -22,6 +22,7 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - OWNER_TOKEN=${OWNER_TOKEN:-baji-owner-2026}
+      - RIDER_TOKEN=${RIDER_TOKEN:-baji-rider-2026}
     volumes:
       # SQLite 数据库持久化（订单数据不会丢失）
       - backend-data:/app/data

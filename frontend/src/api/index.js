@@ -66,6 +66,9 @@ export const getOrder = (orderId) => request.get(`/orders/${orderId}`)
 // 创建支付
 export const createPayment = (data) => request.post('/payment/create', data)
 
+// 确认支付（个人收款码模式）
+export const confirmPayment = (data) => request.post('/payment/confirm', data)
+
 // 查询支付状态
 export const getPaymentStatus = (orderId) =>
   request.get(`/payment/status/${orderId}`)
@@ -90,6 +93,19 @@ export const updateDish = (id, data) => request.put(`/admin/dishes/${id}`, data)
 
 // 删除菜品
 export const deleteDish = (id) => request.delete(`/admin/dishes/${id}`)
+
+// 商家更新订单状态（completed | cancelled）
+export const updateAdminOrderStatus = (id, status) =>
+  request.put(`/admin/orders/${id}/status`, { status })
+
+// 新增分类
+export const addCategory = (data) => request.post('/admin/categories', data)
+
+// 更新分类
+export const updateCategory = (id, data) => request.put(`/admin/categories/${id}`, data)
+
+// 删除分类
+export const deleteCategory = (id) => request.delete(`/admin/categories/${id}`)
 
 /* ========== 骑手端 API ========== */
 

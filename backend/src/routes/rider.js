@@ -74,6 +74,7 @@ router.get('/orders', (req, res) => {
     return {
       id: order.id,
       order_no: order.order_no,
+      pickup_code: order.pickup_code,
       status: order.status,
       total_amount: order.total_amount,
       items: items,

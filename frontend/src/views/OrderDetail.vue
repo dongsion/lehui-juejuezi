@@ -28,9 +28,9 @@
       </div>
 
       <!-- 取餐信息 -->
-      <div class="pickup-card card" v-if="payStatus === 'paid'">
+      <div class="pickup-card card" v-if="payStatus === 'paid' || orderStatus === 'confirmed' || orderStatus === 'delivering' || orderStatus === 'completed'">
         <div class="pickup-label">取餐码</div>
-        <div class="pickup-code">{{ order.pickup_code || order.order_no || '—' }}</div>
+        <div class="pickup-code">{{ pickupCode || order.order_no || '—' }}</div>
         <div class="pickup-tip">请凭取餐码到柜台取餐</div>
       </div>
 
@@ -39,6 +39,18 @@
         <div class="info-row">
           <span class="info-label">订单号</span>
           <span class="info-value">{{ order.order_no || order.id }}</span>
+        </div>
+        <div class="info-row" v-if="order.dine_type">
+          <span class="info-label">就餐方式</span>
+          <span class="info-value">{{ order.dine_type === 'takeout' ? '外带' : '堂食' }}</span>
+        </div>
+        <div class="info-row" v-if="order.table_number">
+          <span class="info-label">桌号</span>
+          <span class="info-value">{{ order.table_number }}</span>
+        </div>
+        <div class="info-row" v-if="order.customer_note">
+          <span class="info-label">备注</span>
+          <span class="info-value">{{ order.customer_note }}</span>
         </div>
         <div class="info-row">
           <span class="info-label">下单时间</span>
@@ -79,7 +91,7 @@
       <!-- 操作按钮 -->
       <div class="action-area">
         <van-button
-          v-if="payStatus === 'unpaid' || payStatus === 'pending'"
+          v-if="orderStatus === 'pending'"
           block
           round
           type="primary"
@@ -87,6 +99,17 @@
           @click="goPay"
         >
           去支付
+        </van-button>
+        <van-button
+          v-else-if="orderStatus === 'cancelled'"
+          block
+          round
+          plain
+          type="danger"
+          size="large"
+          @click="router.push('/')"
+        >
+          订单已取消，重新点单
         </van-button>
         <van-button
           v-else
@@ -105,7 +128,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrder } from '../api'
 
@@ -115,6 +138,7 @@ const router = useRouter()
 const loading = ref(true)
 const loadError = ref('')
 const order = ref(null)
+let pollTimer = null
 
 // 支付状态（优先取 payment_status，兼容 status 字段）
 const payStatus = computed(() => {
@@ -122,13 +146,25 @@ const payStatus = computed(() => {
   return order.value.payment_status || order.value.status || ''
 })
 
+// 订单状态（综合 status 和 payment_status）
+const orderStatus = computed(() => {
+  if (!order.value) return ''
+  if (order.value.status === 'cancelled') return 'cancelled'
+  if (order.value.status === 'completed') return 'completed'
+  if (order.value.status === 'delivering') return 'delivering'
+  if (order.value.status === 'confirmed' && order.value.payment_status === 'paid') return 'confirmed'
+  if (order.value.payment_status === 'paid') return 'paid'
+  return 'pending'
+})
+
 // 状态文字
 const statusText = computed(() => {
-  const s = payStatus.value
+  const s = orderStatus.value
   const map = {
     pending: '待支付',
-    unpaid: '待支付',
     paid: '已支付',
+    confirmed: '商家已确认',
+    delivering: '配送中',
     completed: '已完成',
     cancelled: '已取消'
   }
@@ -137,11 +173,12 @@ const statusText = computed(() => {
 
 // 状态提示
 const statusTip = computed(() => {
-  const s = payStatus.value
+  const s = orderStatus.value
   const map = {
     pending: '请尽快完成支付',
-    unpaid: '请尽快完成支付',
     paid: '商家正在为您准备，请留意取餐',
+    confirmed: '您的订单已确认，正在准备中',
+    delivering: '骑手正在配送，请耐心等待',
     completed: '订单已完成，感谢您的惠顾',
     cancelled: '订单已取消'
   }
@@ -150,19 +187,34 @@ const statusTip = computed(() => {
 
 // 状态卡片样式
 const statusClass = computed(() => {
-  const s = payStatus.value
-  if (s === 'paid' || s === 'completed') return 'status-success'
+  const s = orderStatus.value
+  if (s === 'completed') return 'status-success'
   if (s === 'cancelled') return 'status-cancel'
+  if (s === 'delivering') return 'status-delivering'
+  if (s === 'confirmed' || s === 'paid') return 'status-confirmed'
   return 'status-pending'
 })
 
 // 状态标签类型
 const statusTagType = computed(() => {
-  const s = payStatus.value
-  if (s === 'paid' || s === 'completed') return 'success'
-  if (s === 'pending' || s === 'unpaid') return 'warning'
+  const s = orderStatus.value
+  if (s === 'completed') return 'success'
+  if (s === 'pending') return 'warning'
   if (s === 'cancelled') return 'danger'
+  if (s === 'delivering') return 'primary'
   return 'primary'
+})
+
+// 取餐码
+const pickupCode = computed(() => {
+  if (!order.value) return ''
+  return order.value.pickup_code || ''
+})
+
+// 是否需要轮询（未完成的订单）
+const needPolling = computed(() => {
+  const s = orderStatus.value
+  return s === 'pending' || s === 'paid' || s === 'confirmed' || s === 'delivering'
 })
 
 function formatPrice(val) {
@@ -191,12 +243,50 @@ async function loadOrder() {
   }
 }
 
+// 静默轮询订单状态（不显示 loading）
+async function pollOrderStatus() {
+  try {
+    const id = route.params.id
+    const data = await getOrder(id)
+    const newOrder = data.order || data.data || data
+    if (order.value && newOrder.status !== order.value.status) {
+      order.value = newOrder
+    } else {
+      order.value = newOrder
+    }
+  } catch (e) {
+    console.warn('轮询订单状态失败:', e)
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  if (needPolling.value) {
+    pollTimer = setInterval(() => {
+      pollOrderStatus()
+    }, 5000)
+  }
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
 function goPay() {
   router.push(`/payment/${route.params.id}`)
 }
 
 onMounted(() => {
-  loadOrder()
+  loadOrder().then(() => {
+    startPolling()
+  })
+})
+
+onUnmounted(() => {
+  stopPolling()
 })
 </script>
 
@@ -222,6 +312,14 @@ onMounted(() => {
 
 .status-card.status-success {
   background: linear-gradient(135deg, #67B279, #5BA06C);
+}
+
+.status-card.status-confirmed {
+  background: linear-gradient(135deg, #5B9BD5, #4A8AC4);
+}
+
+.status-card.status-delivering {
+  background: linear-gradient(135deg, #1677FF, #4096FF);
 }
 
 .status-card.status-cancel {

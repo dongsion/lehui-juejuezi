@@ -11,7 +11,7 @@
  *   在任意 Vue 组件中调用 const { connected } = useOrderNotify()
  *   会自动连接，组件卸载时自动断开
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { showToast, showNotify } from 'vant'
 
 export function useOrderNotify() {
@@ -206,15 +206,13 @@ export function useOrderNotify() {
     connected.value = false
   }
 
-  // 组件挂载时自动连接
-  onMounted(() => {
-    connect()
-  })
-
   // 组件卸载时断开
   onUnmounted(() => {
     disconnect()
   })
+
+  // 注意：不在 onMounted 自动连接，由调用方在登录成功后手动 connect()
+  // 避免未登录时发起无效的 SSE 连接
 
   return { connected, connect, disconnect }
 }
