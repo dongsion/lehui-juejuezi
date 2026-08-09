@@ -45,7 +45,8 @@ let data = {
   dishes: [],
   orders: [],
   payment_records: [],
-  _counters: { categories: 0, dishes: 0, orders: 0, payment_records: 0 }
+  settings: [],
+  _counters: { categories: 0, dishes: 0, orders: 0, payment_records: 0, settings: 0 }
 };
 
 function loadData() {
@@ -85,7 +86,18 @@ function now() {
 
 // ========== 种子数据 ==========
 function seedData() {
-  if (data.categories.length > 0) return;
+  // 初始化收款码设置（独立于分类种子，确保已有数据库也能补齐）
+  if (!data.settings.find(s => s.key === 'wechat_qr')) {
+    data.settings.push({ id: nextId('settings'), key: 'wechat_qr', value: '/wechat-qr.png', created_at: now() });
+  }
+  if (!data.settings.find(s => s.key === 'alipay_qr')) {
+    data.settings.push({ id: nextId('settings'), key: 'alipay_qr', value: '/alipay-qr.jpeg', created_at: now() });
+  }
+
+  if (data.categories.length > 0) {
+    saveData();
+    return;
+  }
 
   const cats = [
     { name: '咖啡', sort_order: 1, is_active: 1 },

@@ -48,6 +48,13 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/rider', riderRoutes);
 
 // ============ 静态文件托管（前端构建产物）============
+// 托管上传的收款码图片
+const uploadsDir = path.join(__dirname, 'data', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+
 // 前端构建后产物在 ../frontend/dist 目录
 // 生产环境下后端直接 serve 这些文件，实现单应用部署
 const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');

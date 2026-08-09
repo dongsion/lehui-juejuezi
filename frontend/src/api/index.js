@@ -107,6 +107,16 @@ export const updateCategory = (id, data) => request.put(`/admin/categories/${id}
 // 删除分类
 export const deleteCategory = (id) => request.delete(`/admin/categories/${id}`)
 
+// 获取收款码设置
+export function getQrCodes() {
+  return request.get('/admin/qr-codes')
+}
+
+// 上传收款码
+export function uploadQrCode(data) {
+  return request.post('/admin/qr-codes', data)
+}
+
 /* ========== 骑手端 API ========== */
 
 // 骑手端订单列表（支持按状态筛选）

@@ -38,6 +38,12 @@ const routes = [
     meta: { title: '菜品管理' }
   },
   {
+    path: '/admin/settings',
+    name: 'AdminSettings',
+    component: () => import('../views/admin/Settings.vue'),
+    meta: { title: '收款码设置' }
+  },
+  {
     path: '/rider',
     name: 'rider-dashboard',
     component: () => import('../views/admin/RiderDashboard.vue'),

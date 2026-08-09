@@ -6,6 +6,8 @@
  * 菜品变更时会通过 SSE 推送菜单更新通知给在线顾客端
  */
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const { db } = require('../database');
 const { ownerAuth } = require('../middleware/auth');
 const { addMerchantClient, broadcastMenuUpdate, broadcastOrderStatusChange } = require('../services/notify');
@@ -32,6 +34,55 @@ router.use((req, res, next) => {
 
 // 其余老板端路由走标准 header 鉴权
 router.use(ownerAuth);
+
+/**
+ * GET /api/admin/qr-codes
+ * 获取收款码设置
+ */
+router.get('/qr-codes', (req, res) => {
+  const settings = db.prepare('SELECT * FROM settings WHERE key IN (?, ?)').all('wechat_qr', 'alipay_qr');
+  const result = {};
+  settings.forEach(s => { result[s.key] = s.value; });
+  res.json({ wechat_qr: result.wechat_qr || '/wechat-qr.png', alipay_qr: result.alipay_qr || '/alipay-qr.jpeg' });
+});
+
+/**
+ * POST /api/admin/qr-codes
+ * 上传收款码图片（base64）
+ * 请求体：{ channel: 'wechat' | 'alipay', image: 'data:image/png;base64,...' }
+ */
+router.post('/qr-codes', (req, res) => {
+  const { channel, image } = req.body;
+  if (!channel || !['wechat', 'alipay'].includes(channel)) {
+    return res.status(400).json({ code: 400, message: 'channel 必须为 wechat 或 alipay' });
+  }
+  if (!image || !image.startsWith('data:image/')) {
+    return res.status(400).json({ code: 400, message: '请上传有效的图片' });
+  }
+
+  const key = channel === 'wechat' ? 'wechat_qr' : 'alipay_qr';
+  const ext = image.includes('image/png') ? 'png' : 'jpeg';
+  const fileName = `qr_${channel}_${Date.now()}.${ext}`;
+  const uploadDir = path.join(__dirname, '..', 'data', 'uploads');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+  const filePath = path.join(uploadDir, fileName);
+  const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+  fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+
+  // 更新设置
+  const relativePath = `/uploads/${fileName}`;
+  const existing = db.prepare('SELECT * FROM settings WHERE key = ?').get(key);
+  if (existing) {
+    db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(relativePath, key);
+  } else {
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(key, relativePath);
+  }
+
+  broadcastMenuUpdate('update');
+  res.json({ code: 'SUCCESS', message: '收款码更新成功', path: relativePath });
+});
 
 /**
  * GET /api/admin/order-stream?token=xxx

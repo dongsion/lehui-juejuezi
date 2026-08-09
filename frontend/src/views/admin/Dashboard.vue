@@ -121,6 +121,10 @@
               <van-icon name="apps-o" size="28" color="#C2623F" />
               <span>菜品管理</span>
             </div>
+            <div class="nav-item card" @click="router.push('/admin/settings')">
+              <van-icon name="qr" size="28" color="#C2623F" />
+              <span>收款码设置</span>
+            </div>
             <div class="nav-item card" @click="router.push('/rider')">
               <van-icon name="logistics" size="28" color="#1677FF" />
               <span>骑手端</span>

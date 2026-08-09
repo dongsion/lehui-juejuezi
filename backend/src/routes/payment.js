@@ -72,8 +72,9 @@ router.post('/create', (req, res) => {
   db.prepare('UPDATE orders SET payment_channel = ? WHERE id = ?').run(channel, order_id);
 
   // 返回收款码图片路径 + 订单信息
-  // 图片放在前端 public 目录，通过静态文件服务访问
-  const qrImage = channel === 'wechat' ? '/wechat-qr.png' : '/alipay-qr.jpeg';
+  // 从 settings 获取收款码路径
+  const qrSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get(channel === 'wechat' ? 'wechat_qr' : 'alipay_qr');
+  const qrImage = qrSetting ? qrSetting.value : (channel === 'wechat' ? '/wechat-qr.png' : '/alipay-qr.jpeg');
 
   res.json({
     qr_image: qrImage,
