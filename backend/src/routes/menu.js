@@ -1,9 +1,11 @@
 /**
  * 顾客端菜单路由
  * 提供菜品分类及菜品列表查询
+ * 同时提供 SSE 端点供顾客端监听菜单实时更新
  */
 const express = require('express');
 const { db } = require('../database');
+const { addCustomerClient } = require('../services/notify');
 
 const router = express.Router();
 
@@ -48,6 +50,19 @@ router.get('/', (req, res) => {
   }));
 
   res.json({ categories: result });
+});
+
+/**
+ * GET /api/menu/stream
+ * 顾客端 SSE 端点 — 监听菜单实时更新
+ *
+ * 顾客端打开页面后建立 SSE 连接，商家修改菜品时
+ * 服务器主动推送 menu_update 事件，顾客端收到后自动刷新菜单
+ *
+ * 无需鉴权（顾客端无需登录）
+ */
+router.get('/stream', (req, res) => {
+  return addCustomerClient(res);
 });
 
 module.exports = router;

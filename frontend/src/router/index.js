@@ -36,6 +36,12 @@ const routes = [
     name: 'admin-dishes',
     component: () => import('../views/admin/DishManage.vue'),
     meta: { title: '菜品管理' }
+  },
+  {
+    path: '/rider',
+    name: 'rider-dashboard',
+    component: () => import('../views/admin/RiderDashboard.vue'),
+    meta: { title: '骑手端' }
   }
 ]
 

@@ -1,16 +1,21 @@
 /**
- * 老板端鉴权中间件
- * 通过请求头 x-owner-token 验证身份
- * 生产环境建议使用 JWT + 数据库存储的 token，此处为单店自用简化方案
+ * 鉴权中间件
+ *
+ * 两种角色鉴权：
+ *   - 商家端：通过 x-owner-token 请求头验证 OWNER_TOKEN
+ *   - 骑手端：通过 x-rider-token 请求头验证 RIDER_TOKEN
+ *
+ * SSE 端点因 EventSource 不支持自定义 header，通过 query 参数传 token
  */
 
-// 老板端访问令牌
-// 优先从环境变量读取，默认值为开发环境令牌
+// 商家端访问令牌
 const OWNER_TOKEN = process.env.OWNER_TOKEN || 'baji-owner-2026';
 
+// 骑手端访问令牌
+const RIDER_TOKEN = process.env.RIDER_TOKEN || 'baji-rider-2026';
+
 /**
- * 验证 x-owner-token 请求头
- * 通过则放行，未通过则返回 401 未授权
+ * 商家端鉴权：验证 x-owner-token 请求头
  */
 function ownerAuth(req, res, next) {
   const token = req.headers['x-owner-token'];
@@ -25,4 +30,20 @@ function ownerAuth(req, res, next) {
   next();
 }
 
-module.exports = { ownerAuth };
+/**
+ * 骑手端鉴权：验证 x-rider-token 请求头
+ */
+function riderAuth(req, res, next) {
+  const token = req.headers['x-rider-token'];
+
+  if (!token || token !== RIDER_TOKEN) {
+    return res.status(401).json({
+      code: 401,
+      message: '未授权：请提供有效的 x-rider-token 请求头',
+    });
+  }
+
+  next();
+}
+
+module.exports = { ownerAuth, riderAuth, OWNER_TOKEN, RIDER_TOKEN };

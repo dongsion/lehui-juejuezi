@@ -121,6 +121,10 @@
               <van-icon name="apps-o" size="28" color="#C2623F" />
               <span>菜品管理</span>
             </div>
+            <div class="nav-item card" @click="router.push('/rider')">
+              <van-icon name="logistics" size="28" color="#1677FF" />
+              <span>骑手端</span>
+            </div>
             <div class="nav-item card" @click="router.push('/')">
               <van-icon name="point-gift-o" size="28" color="#C2623F" />
               <span>顾客点单</span>
@@ -501,8 +505,8 @@ onMounted(() => {
 
 .nav-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
 .nav-item {

@@ -18,6 +18,7 @@ const menuRoutes = require('./routes/menu');
 const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payment');
 const adminRoutes = require('./routes/admin');
+const riderRoutes = require('./routes/rider');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -44,6 +45,7 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/rider', riderRoutes);
 
 // ============ 静态文件托管（前端构建产物）============
 // 前端构建后产物在 ../frontend/dist 目录

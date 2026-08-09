@@ -14,7 +14,7 @@ const request = axios.create({
   }
 })
 
-// 请求拦截器：admin 接口自动注入老板令牌
+// 请求拦截器：admin 接口自动注入老板令牌，rider 接口注入骑手令牌
 request.interceptors.request.use(
   (config) => {
     // /admin/* 接口需要 owner token
@@ -22,6 +22,13 @@ request.interceptors.request.use(
       const token = localStorage.getItem('owner_token')
       if (token) {
         config.headers['x-owner-token'] = token
+      }
+    }
+    // /rider/* 接口需要 rider token
+    if (config.url && config.url.startsWith('/rider')) {
+      const token = localStorage.getItem('rider_token')
+      if (token) {
+        config.headers['x-rider-token'] = token
       }
     }
     return config
@@ -83,3 +90,13 @@ export const updateDish = (id, data) => request.put(`/admin/dishes/${id}`, data)
 
 // 删除菜品
 export const deleteDish = (id) => request.delete(`/admin/dishes/${id}`)
+
+/* ========== 骑手端 API ========== */
+
+// 骑手端订单列表（支持按状态筛选）
+export const getRiderOrders = (status) =>
+  request.get('/rider/orders', { params: status ? { status } : {} })
+
+// 骑手更新订单配送状态（delivering | completed）
+export const updateOrderStatus = (orderId, status) =>
+  request.put(`/rider/orders/${orderId}/status`, { status })

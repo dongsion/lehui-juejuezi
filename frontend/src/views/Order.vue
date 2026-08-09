@@ -164,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { getMenu, createOrder } from '../api'
@@ -181,6 +181,42 @@ const categories = ref([])
 const activeIndex = ref(0)
 const showCartSheet = ref(false)
 const submitting = ref(false)
+
+// ============ 顾客端菜单 SSE — 监听商家修改菜单后实时刷新 ============
+let menuEventSource = null
+let menuReconnectTimer = null
+
+function connectMenuStream() {
+  const apiBase = import.meta.env.VITE_API_BASE || '/api'
+  menuEventSource = new EventSource(`${apiBase}/menu/stream`)
+
+  menuEventSource.addEventListener('connected', () => {
+    console.log('[菜单SSE] 已连接菜单实时更新服务')
+  })
+
+  menuEventSource.addEventListener('menu_update', () => {
+    console.log('[菜单SSE] 收到菜单更新通知，自动刷新菜单')
+    // 静默刷新菜单（不显示 loading）
+    refreshMenu()
+  })
+
+  menuEventSource.onerror = () => {
+    console.warn('[菜单SSE] 连接断开，10 秒后重连')
+    if (menuEventSource) menuEventSource.close()
+    clearTimeout(menuReconnectTimer)
+    menuReconnectTimer = setTimeout(() => {
+      connectMenuStream()
+    }, 10000)
+  }
+}
+
+function disconnectMenuStream() {
+  clearTimeout(menuReconnectTimer)
+  if (menuEventSource) {
+    menuEventSource.close()
+    menuEventSource = null
+  }
+}
 
 // 当前分类
 const currentCategory = computed(() => categories.value[activeIndex.value])
@@ -230,6 +266,26 @@ async function loadMenu() {
   }
 }
 
+// 静默刷新菜单（SSE 收到更新通知后调用，不显示 loading）
+async function refreshMenu() {
+  try {
+    const data = await getMenu()
+    let cats = data.categories || data.data?.categories || data
+    if (!Array.isArray(cats)) cats = []
+    categories.value = cats.map((c) => ({
+      id: c.id,
+      name: c.name,
+      dishes: c.dishes || []
+    }))
+    // 如果当前选中的分类超出范围，重置到第一个
+    if (activeIndex.value >= categories.value.length) {
+      activeIndex.value = 0
+    }
+  } catch (e) {
+    console.warn('[菜单SSE] 静默刷新菜单失败:', e)
+  }
+}
+
 // 清空购物车
 function handleClear() {
   showConfirmDialog({
@@ -267,6 +323,12 @@ async function handleSubmit() {
 
 onMounted(() => {
   loadMenu()
+  // 连接菜单 SSE — 商家修改菜单后自动刷新
+  connectMenuStream()
+})
+
+onUnmounted(() => {
+  disconnectMenuStream()
 })
 </script>
 

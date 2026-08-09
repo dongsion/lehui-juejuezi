@@ -1,27 +1,31 @@
 /**
  * SSE（Server-Sent Events）实时推送服务
  *
- * 原理：商家浏览器打开老板端页面时，建立一个长连接到 /api/admin/order-stream
- *       顾客下单后，后端通过这个连接把新订单信息"推"给商家浏览器
- *       商家浏览器收到后播放提示音 + 弹出通知
+ * 三角色分组推送：
+ *   - merchantClients：商家端连接，接收新订单 + 支付通知 + 订单状态变更
+ *   - riderClients：骑手端连接，接收新订单 + 支付通知
+ *   - customerClients：顾客端连接，接收菜单实时更新
  *
- * SSE 相比 WebSocket 的优势：
- *   - 单向推送足够（服务器→浏览器），不需要双向
- *   - 浏览器原生支持，无需额外库
- *   - 自动断线重连
- *   - 穿透代理/防火墙更友好
+ * 推送场景：
+ *   1. 顾客下单 → 推送给商家端 + 骑手端
+ *   2. 顾客确认支付 → 推送给商家端 + 骑手端
+ *   3. 骑手更新订单状态 → 推送给商家端
+ *   4. 商家修改菜单 → 推送给所有顾客端（菜单实时同步）
  */
 
-// 存储所有已连接的商家客户端
-// 每个 client 是一个 express Response 对象，保持着 SSE 长连接
-const clients = [];
+// ============ 三角色客户端列表 ============
+const merchantClients = [];  // 商家端 SSE 连接
+const riderClients = [];      // 骑手端 SSE 连接
+const customerClients = [];   // 顾客端 SSE 连接（监听菜单更新）
 
 /**
- * 添加一个商家客户端连接
+ * 通用：添加一个 SSE 客户端连接
  * @param {Response} res - Express Response 对象
- * @returns {number} 客户端索引
+ * @param {Array} clientList - 目标客户端列表
+ * @param {string} role - 角色标识，用于日志
+ * @returns {number} 客户端 ID
  */
-function addClient(res) {
+function addClientToList(res, clientList, role) {
   // 设置 SSE 必需的响应头
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -32,32 +36,73 @@ function addClient(res) {
 
   // 发送初始连接成功事件
   res.write('event: connected\n');
-  res.write('data: {"message":"已连接订单推送服务"}\n\n');
+  res.write('data: {"message":"已连接实时推送服务"}\n\n');
 
   const client = { res, id: Date.now() };
-  clients.push(client);
-  console.log(`[SSE] 商家客户端已连接，当前在线数：${clients.length}`);
+  clientList.push(client);
+  console.log(`[SSE] ${role}客户端已连接，当前在线数：${clientList.length}`);
 
   // 客户端断开时清理
   res.on('close', () => {
-    const idx = clients.indexOf(client);
+    const idx = clientList.indexOf(client);
     if (idx > -1) {
-      clients.splice(idx, 1);
-      console.log(`[SSE] 商家客户端断开，当前在线数：${clients.length}`);
+      clientList.splice(idx, 1);
+      console.log(`[SSE] ${role}客户端断开，当前在线数：${clientList.length}`);
     }
   });
 
   return client.id;
 }
 
+// ============ 添加各角色客户端 ============
+
+function addMerchantClient(res) {
+  return addClientToList(res, merchantClients, '商家');
+}
+
+function addRiderClient(res) {
+  return addClientToList(res, riderClients, '骑手');
+}
+
+function addCustomerClient(res) {
+  return addClientToList(res, customerClients, '顾客');
+}
+
+// ============ 通用推送函数 ============
+
 /**
- * 向所有在线的商家浏览器推送新订单通知
- * 在顾客下单成功后调用此函数
- *
- * @param {Object} order - 订单信息 { id, order_no, total_amount, items, created_at }
+ * 向指定客户端列表推送 SSE 消息
+ * @param {Array} clientList - 目标客户端列表
+ * @param {string} eventName - 事件名称
+ * @param {Object} data - 要推送的数据
+ * @param {string} roleLabel - 角色标签（日志用）
+ */
+function pushToClients(clientList, eventName, data, roleLabel) {
+  if (clientList.length === 0) return 0;
+
+  const dataStr = JSON.stringify(data);
+  let sent = 0;
+
+  clientList.forEach((client) => {
+    try {
+      client.res.write(`event: ${eventName}\n`);
+      client.res.write(`data: ${dataStr}\n\n`);
+      sent++;
+    } catch (e) {
+      console.error(`[SSE] 推送失败（${roleLabel}）：`, e.message);
+    }
+  });
+
+  return sent;
+}
+
+// ============ 业务推送函数 ============
+
+/**
+ * 推送新订单通知 → 商家端 + 骑手端
+ * 在顾客下单成功后调用
  */
 function broadcastNewOrder(order) {
-  // 组装推送数据
   const payload = {
     type: 'new_order',
     order: {
@@ -73,28 +118,13 @@ function broadcastNewOrder(order) {
     timestamp: Date.now(),
   };
 
-  const dataStr = JSON.stringify(payload);
-  let sent = 0;
-
-  clients.forEach((client) => {
-    try {
-      // SSE 消息格式：event 行 + data 行 + 空行结束
-      client.res.write('event: new_order\n');
-      client.res.write(`data: ${dataStr}\n\n`);
-      sent++;
-    } catch (e) {
-      console.error('[SSE] 推送失败：', e.message);
-    }
-  });
-
-  console.log(`[SSE] 新订单已推送给 ${sent} 个在线商家客户端`);
+  const mSent = pushToClients(merchantClients, 'new_order', payload, '商家');
+  const rSent = pushToClients(riderClients, 'new_order', payload, '骑手');
+  console.log(`[SSE] 新订单已推送给 ${mSent} 个商家、${rSent} 个骑手`);
 }
 
 /**
- * 推送支付完成通知
- * 在订单支付成功后调用
- *
- * @param {Object} data - { order_id, payment_channel }
+ * 推送支付成功通知 → 商家端 + 骑手端
  */
 function broadcastPaymentSuccess(data) {
   const payload = {
@@ -104,24 +134,50 @@ function broadcastPaymentSuccess(data) {
     timestamp: Date.now(),
   };
 
-  const dataStr = JSON.stringify(payload);
-  let sent = 0;
+  const mSent = pushToClients(merchantClients, 'payment_success', payload, '商家');
+  const rSent = pushToClients(riderClients, 'payment_success', payload, '骑手');
+  console.log(`[SSE] 支付成功通知已推送给 ${mSent} 个商家、${rSent} 个骑手`);
+}
 
-  clients.forEach((client) => {
-    try {
-      client.res.write('event: payment_success\n');
-      client.res.write(`data: ${dataStr}\n\n`);
-      sent++;
-    } catch (e) {
-      console.error('[SSE] 推送失败：', e.message);
-    }
-  });
+/**
+ * 推送订单状态变更通知 → 商家端
+ * 骑手更新订单配送状态时调用
+ */
+function broadcastOrderStatusChange(data) {
+  const payload = {
+    type: 'order_status_change',
+    order_id: data.order_id,
+    order_no: data.order_no || '',
+    status: data.status,         // delivering | completed
+    timestamp: Date.now(),
+  };
 
-  console.log(`[SSE] 支付成功通知已推送给 ${sent} 个在线商家客户端`);
+  const sent = pushToClients(merchantClients, 'order_status_change', payload, '商家');
+  console.log(`[SSE] 订单状态变更已推送给 ${sent} 个商家`);
+}
+
+/**
+ * 推送菜单更新通知 → 顾客端
+ * 商家增删改菜品时调用，顾客端收到后自动刷新菜单
+ */
+function broadcastMenuUpdate(action) {
+  const payload = {
+    type: 'menu_update',
+    action: action,  // 'add' | 'update' | 'delete' | 'toggle'
+    message: '菜单已更新',
+    timestamp: Date.now(),
+  };
+
+  const sent = pushToClients(customerClients, 'menu_update', payload, '顾客');
+  console.log(`[SSE] 菜单更新通知已推送给 ${sent} 个在线顾客`);
 }
 
 module.exports = {
-  addClient,
+  addMerchantClient,
+  addRiderClient,
+  addCustomerClient,
   broadcastNewOrder,
   broadcastPaymentSuccess,
+  broadcastOrderStatusChange,
+  broadcastMenuUpdate,
 };

@@ -2,11 +2,13 @@
  * 老板端路由
  * 提供订单查询、菜品管理、分类管理和经营统计功能
  * 所有路由均需通过 x-owner-token 鉴权
+ *
+ * 菜品变更时会通过 SSE 推送菜单更新通知给在线顾客端
  */
 const express = require('express');
 const { db } = require('../database');
 const { ownerAuth } = require('../middleware/auth');
-const { addClient } = require('../services/notify');
+const { addMerchantClient, broadcastMenuUpdate } = require('../services/notify');
 
 const router = express.Router();
 
@@ -23,7 +25,7 @@ router.use((req, res, next) => {
     if (token !== SSE_TOKEN) {
       return res.status(401).json({ code: 401, message: '未授权' });
     }
-    return addClient(res);
+    return addMerchantClient(res);
   }
   next();
 });
@@ -32,7 +34,7 @@ router.use((req, res, next) => {
 router.use(ownerAuth);
 
 /**
- * GET /api/admin/order-stream?token=baji-owner-2026
+ * GET /api/admin/order-stream?token=xxx
  * SSE 实时订单推送端点
  * 商家浏览器打开后保持长连接，有新订单时服务器主动推送
  */
@@ -48,9 +50,6 @@ router.get('/orders', (req, res) => {
   const { status, date } = req.query;
 
   // 动态构建查询条件和参数
-  // status 参数支持两种含义：
-  //   - paid / unpaid / pending → 按 payment_status 筛选
-  //   - completed → 按 status 筛选
   let sql = 'SELECT * FROM orders WHERE 1=1';
   const params = [];
 
@@ -65,7 +64,6 @@ router.get('/orders', (req, res) => {
   }
 
   if (date) {
-    // date 格式为 YYYY-MM-DD，匹配 created_at 的日期部分
     sql += ' AND date(created_at) = date(?)';
     params.push(date);
   }
@@ -104,7 +102,6 @@ router.get('/orders', (req, res) => {
 /**
  * GET /api/admin/dishes
  * 获取所有菜品（含下架），按分类分组
- * 返回：{ categories: [{ id, name, dishes: [{ id, name, description, price, image_url, is_available, sort_order }] }] }
  */
 router.get('/dishes', (req, res) => {
   const categories = db
@@ -136,18 +133,15 @@ router.get('/dishes', (req, res) => {
 
 /**
  * POST /api/admin/dishes
- * 创建菜品
- * 请求体：{ category_id, name, description, price, image_url, sort_order }
+ * 创建菜品 → 广播菜单更新给顾客端
  */
 router.post('/dishes', (req, res) => {
   const { category_id, name, description, price, image_url, sort_order } = req.body;
 
-  // 参数校验
   if (!category_id || !name || price === undefined) {
     return res.status(400).json({ code: 400, message: '缺少必要参数：category_id, name, price' });
   }
 
-  // 校验分类是否存在
   const category = db.prepare('SELECT id FROM categories WHERE id = ?').get(category_id);
   if (!category) {
     return res.status(400).json({ code: 400, message: '分类不存在' });
@@ -158,6 +152,9 @@ router.post('/dishes', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, 1)
   `).run(category_id, name, description || null, price, image_url || '', sort_order || 0);
 
+  // ★ 菜品新增 → 推送菜单更新通知给在线顾客端
+  broadcastMenuUpdate('add');
+
   res.status(201).json({
     id: result.lastInsertRowid,
     message: '菜品创建成功',
@@ -166,20 +163,17 @@ router.post('/dishes', (req, res) => {
 
 /**
  * PUT /api/admin/dishes/:id
- * 更新菜品（含上下架 is_available）
- * 请求体：{ name, description, price, image_url, is_available, sort_order, category_id }（均为可选）
+ * 更新菜品（含上下架 is_available） → 广播菜单更新给顾客端
  */
 router.put('/dishes/:id', (req, res) => {
   const { id } = req.params;
   const { name, description, price, image_url, is_available, sort_order, category_id } = req.body;
 
-  // 查询菜品是否存在
   const dish = db.prepare('SELECT * FROM dishes WHERE id = ?').get(id);
   if (!dish) {
     return res.status(404).json({ code: 404, message: '菜品不存在' });
   }
 
-  // 使用已有值作为默认值，只更新传入的字段
   db.prepare(`
     UPDATE dishes
     SET name = ?, description = ?, price = ?, image_url = ?, is_available = ?, sort_order = ?, category_id = ?
@@ -195,12 +189,15 @@ router.put('/dishes/:id', (req, res) => {
     id
   );
 
+  // ★ 菜品更新/上下架 → 推送菜单更新通知给在线顾客端
+  broadcastMenuUpdate('update');
+
   res.json({ message: '菜品更新成功' });
 });
 
 /**
  * DELETE /api/admin/dishes/:id
- * 删除菜品
+ * 删除菜品 → 广播菜单更新给顾客端
  */
 router.delete('/dishes/:id', (req, res) => {
   const { id } = req.params;
@@ -212,13 +209,15 @@ router.delete('/dishes/:id', (req, res) => {
 
   db.prepare('DELETE FROM dishes WHERE id = ?').run(id);
 
+  // ★ 菜品删除 → 推送菜单更新通知给在线顾客端
+  broadcastMenuUpdate('delete');
+
   res.json({ message: '菜品删除成功' });
 });
 
 /**
  * POST /api/admin/categories
- * 创建分类
- * 请求体：{ name, sort_order }
+ * 创建分类 → 广播菜单更新给顾客端
  */
 router.post('/categories', (req, res) => {
   const { name, sort_order } = req.body;
@@ -232,6 +231,8 @@ router.post('/categories', (req, res) => {
     VALUES (?, ?, 1)
   `).run(name, sort_order || 0);
 
+  broadcastMenuUpdate('add');
+
   res.status(201).json({
     id: result.lastInsertRowid,
     message: '分类创建成功',
@@ -241,10 +242,8 @@ router.post('/categories', (req, res) => {
 /**
  * GET /api/admin/stats
  * 获取今日经营统计
- * 返回：{ today_revenue, today_orders, avg_order_value, top_dishes: [{ name, count, revenue }] }
  */
 router.get('/stats', (req, res) => {
-  // 查询今日已支付的订单
   const todayStats = db.prepare(`
     SELECT
       COUNT(*) as today_orders,
@@ -255,16 +254,13 @@ router.get('/stats', (req, res) => {
 
   const todayOrders = todayStats.today_orders || 0;
   const todayRevenue = todayStats.today_revenue || 0;
-  // 客单价 = 总收入 / 订单数
   const avgOrderValue = todayOrders > 0 ? Math.round((todayRevenue / todayOrders) * 100) / 100 : 0;
 
-  // 统计今日热销菜品（从已支付订单的 items_json 中聚合）
   const paidOrders = db.prepare(`
     SELECT items_json FROM orders
     WHERE payment_status = 'paid' AND date(created_at) = date('now', 'localtime')
   `).all();
 
-  // 按菜品名称聚合销量和收入
   const dishStats = {};
   paidOrders.forEach((order) => {
     let items = [];
@@ -282,7 +278,6 @@ router.get('/stats', (req, res) => {
     });
   });
 
-  // 转换为数组并按销量降序排列，取前 5 名
   const topDishes = Object.entries(dishStats)
     .map(([name, stats]) => ({
       name: name,
