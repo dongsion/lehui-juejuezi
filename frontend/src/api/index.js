@@ -117,6 +117,11 @@ export function uploadQrCode(data) {
   return request.post('/admin/qr-codes', data)
 }
 
+// 修改共享密码
+export function changePassword(data) {
+  return request.post('/admin/change-password', data)
+}
+
 /* ========== 骑手端 API ========== */
 
 // 骑手端订单列表（支持按状态筛选）
@@ -126,3 +131,34 @@ export const getRiderOrders = (status) =>
 // 骑手更新订单配送状态（delivering | completed）
 export const updateOrderStatus = (orderId, status) =>
   request.put(`/rider/orders/${orderId}/status`, { status })
+
+/* ========== 顾客认证 API ========== */
+
+const customerRequest = axios.create({
+  baseURL,
+  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' }
+})
+
+// 顾客认证响应拦截器
+customerRequest.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      '网络异常，请稍后重试'
+    console.error('[Customer API Error]', error.config?.url, message)
+    return Promise.reject(error)
+  }
+)
+
+// 发送验证码
+export function sendCode(phone) {
+  return customerRequest.post('/customer/send-code', { phone })
+}
+
+// 顾客登录
+export function customerLogin(phone, code) {
+  return customerRequest.post('/customer/login', { phone, code })
+}

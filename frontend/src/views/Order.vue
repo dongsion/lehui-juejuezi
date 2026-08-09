@@ -6,8 +6,23 @@
         <div class="shop-name">乐荟绝绝子</div>
         <div class="shop-slogan">新鲜好味，绝绝子体验</div>
       </div>
+      <!-- 顾客信息 -->
+      <div class="customer-badge" @click="showCustomerMenu = true">
+        <van-icon name="user-circle-o" size="16" color="#fff" />
+        <span class="customer-name">{{ customerNickname }}</span>
+        <van-icon name="arrow-down" size="12" color="#fff" opacity="0.7" />
+      </div>
       <div class="banner-decoration"></div>
     </div>
+
+    <!-- 顾客菜单弹窗 -->
+    <van-action-sheet
+      v-model:show="showCustomerMenu"
+      :actions="customerActions"
+      cancel-text="取消"
+      close-on-click-action
+      @select="onCustomerAction"
+    />
 
     <!-- 菜单区域：左侧分类侧边栏 + 右侧菜品列表 -->
     <div class="menu-wrap">
@@ -224,6 +239,14 @@ const dineType = ref('dine_in')
 const tableNumber = ref('')
 const customerNote = ref('')
 
+// 顾客信息
+const customerNickname = ref(localStorage.getItem('customer_nickname') || '顾客')
+const customerPhone = ref(localStorage.getItem('customer_phone') || '')
+const showCustomerMenu = ref(false)
+const customerActions = [
+  { name: '退出登录', color: '#D9534F' },
+]
+
 // ============ 顾客端菜单 SSE — 监听商家修改菜单后实时刷新 ============
 let menuEventSource = null
 let menuReconnectTimer = null
@@ -351,6 +374,8 @@ async function handleSubmit() {
       dine_type: dineType.value,
       table_number: tableNumber.value || null,
       customer_note: customerNote.value || null,
+      customer_phone: customerPhone.value || null,
+      customer_nickname: customerNickname.value || null,
     }
     const res = await createOrder(payload)
     const orderId = res.order_id || res.id || res.orderId
@@ -366,6 +391,25 @@ async function handleSubmit() {
     showToast(e.response?.data?.message || '下单失败，请重试')
   } finally {
     submitting.value = false
+  }
+}
+
+// 顾客菜单操作
+function onCustomerAction(action) {
+  if (action.name === '退出登录') {
+    showConfirmDialog({
+      title: '提示',
+      message: '确定要退出登录吗？'
+    })
+      .then(() => {
+        localStorage.removeItem('customer_token')
+        localStorage.removeItem('customer_id')
+        localStorage.removeItem('customer_phone')
+        localStorage.removeItem('customer_nickname')
+        showToast('已退出登录')
+        router.replace('/login')
+      })
+      .catch(() => {})
   }
 }
 
@@ -422,6 +466,30 @@ onUnmounted(() => {
   height: 120px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* 顾客信息徽章 */
+.customer-badge {
+  position: absolute;
+  right: 16px;
+  top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.customer-badge .customer-name {
+  font-size: 13px;
+  color: #fff;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ===== 菜单区域 ===== */

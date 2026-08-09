@@ -149,7 +149,7 @@ export function useOrderNotify() {
     }
 
     // 从 localStorage 读取 token
-    const token = localStorage.getItem('owner_token') || 'baji-owner-2026'
+    const token = localStorage.getItem('owner_token') || 'baji-2026'
 
     // 创建 EventSource 连接
     // 注意：EventSource 不支持自定义 header，所以通过 query 传 token

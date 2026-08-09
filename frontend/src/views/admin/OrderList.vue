@@ -78,6 +78,13 @@
             </div>
           </div>
 
+          <!-- 顾客信息 -->
+          <div v-if="order.customer_nickname || order.customer_phone" class="oc-customer">
+            <van-icon name="contact" size="12" />
+            <span v-if="order.customer_nickname">{{ order.customer_nickname }}</span>
+            <span v-if="order.customer_phone" class="oc-customer-phone">{{ maskPhone(order.customer_phone) }}</span>
+          </div>
+
           <!-- 备注 -->
           <div v-if="order.customer_note" class="oc-note">
             <van-icon name="comment-o" size="12" /> 备注：{{ order.customer_note }}
@@ -181,6 +188,12 @@ function statusTagType(paymentStatus, status) {
 
 function formatPrice(val) {
   return Number(val || 0).toFixed(2)
+}
+
+// 手机号脱敏：138****1234
+function maskPhone(phone) {
+  if (!phone || phone.length !== 11) return phone
+  return phone.slice(0, 3) + '****' + phone.slice(7)
 }
 
 function formatTime(t) {
@@ -360,6 +373,19 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.oc-customer {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.oc-customer-phone {
+  color: var(--color-text-placeholder);
 }
 
 .oc-dishes {

@@ -9,22 +9,20 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { db } = require('../database');
-const { ownerAuth } = require('../middleware/auth');
+const { ownerAuth, getSharedPassword } = require('../middleware/auth');
 const { addMerchantClient, broadcastMenuUpdate, broadcastOrderStatusChange } = require('../services/notify');
 
 const router = express.Router();
 
-// SSE 端点也使用环境变量中的 OWNER_TOKEN 进行鉴权
-const SSE_TOKEN = process.env.OWNER_TOKEN || 'baji-owner-2026';
-
 // 所有老板端路由都需要鉴权
 // 但 SSE 端点需要特殊处理（EventSource 不支持自定义 header），
-// 改为在路由内通过 query 参数鉴权
+// 改为在路由内通过 query 参数鉴权（使用数据库中的共享密码）
 router.use((req, res, next) => {
   // SSE 流端点单独通过 query 鉴权
   if (req.path === '/order-stream') {
     const token = req.query.token;
-    if (token !== SSE_TOKEN) {
+    const password = getSharedPassword();
+    if (token !== password) {
       return res.status(401).json({ code: 401, message: '未授权' });
     }
     return addMerchantClient(res);
@@ -85,6 +83,38 @@ router.post('/qr-codes', (req, res) => {
 });
 
 /**
+ * POST /api/admin/change-password
+ * 修改共享密码（商家端和骑手端共用）
+ * 请求体：{ old_password, new_password }
+ */
+router.post('/change-password', (req, res) => {
+  const { old_password, new_password } = req.body;
+
+  if (!old_password || !new_password) {
+    return res.status(400).json({ code: 400, message: '请输入旧密码和新密码' });
+  }
+  if (new_password.length < 6) {
+    return res.status(400).json({ code: 400, message: '新密码至少6位' });
+  }
+
+  const setting = db.prepare('SELECT value FROM settings WHERE key = ?').get('shared_password');
+  const currentPassword = setting ? setting.value : 'baji-2026';
+
+  if (old_password !== currentPassword) {
+    return res.status(400).json({ code: 400, message: '旧密码错误' });
+  }
+
+  const existing = db.prepare('SELECT * FROM settings WHERE key = ?').get('shared_password');
+  if (existing) {
+    db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(new_password, 'shared_password');
+  } else {
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('shared_password', new_password);
+  }
+
+  res.json({ code: 'SUCCESS', message: '密码修改成功，请重新登录' });
+});
+
+/**
  * GET /api/admin/order-stream?token=xxx
  * SSE 实时订单推送端点
  * 商家浏览器打开后保持长连接，有新订单时服务器主动推送
@@ -141,6 +171,8 @@ router.get('/orders', (req, res) => {
       customer_note: order.customer_note,
       dine_type: order.dine_type,
       table_number: order.table_number,
+      customer_phone: order.customer_phone,
+      customer_nickname: order.customer_nickname,
       payment_channel: order.payment_channel,
       payment_status: order.payment_status,
       created_at: order.created_at,

@@ -1,7 +1,7 @@
 <template>
   <div class="settings-page">
     <van-nav-bar
-      title="收款码设置"
+      title="系统设置"
       left-arrow
       @click-left="router.back()"
       fixed
@@ -104,6 +104,54 @@
           </div>
         </div>
 
+        <!-- 密码修改 -->
+        <div class="qr-section">
+          <div class="section-title">密码修改</div>
+          <div class="password-card card">
+            <div class="password-tips">
+              <van-icon name="warning-o" size="14" />
+              <span>商家端和骑手端共用此密码，修改后需重新登录</span>
+            </div>
+            <van-cell-group :border="false" class="password-form">
+              <van-field
+                v-model="pwdForm.old_password"
+                type="password"
+                label="旧密码"
+                placeholder="请输入当前密码"
+                :border="false"
+                clearable
+              />
+              <van-field
+                v-model="pwdForm.new_password"
+                type="password"
+                label="新密码"
+                placeholder="至少6位"
+                :border="false"
+                clearable
+              />
+              <van-field
+                v-model="pwdForm.confirm_password"
+                type="password"
+                label="确认新密码"
+                placeholder="请再次输入新密码"
+                :border="false"
+                clearable
+              />
+            </van-cell-group>
+            <van-button
+              block
+              round
+              type="primary"
+              :loading="pwdSaving"
+              loading-text="保存中..."
+              class="password-btn"
+              @click="handleChangePassword"
+            >
+              保存密码
+            </van-button>
+          </div>
+        </div>
+
         <!-- 底部提示 -->
         <div class="bottom-tips">
           <p>建议上传清晰的收款码截图，系统会自动压缩图片</p>
@@ -115,10 +163,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
-import { getQrCodes, uploadQrCode } from '../../api'
+import { showToast, showConfirmDialog } from 'vant'
+import { getQrCodes, uploadQrCode, changePassword } from '../../api'
 
 const router = useRouter()
 
@@ -129,6 +177,14 @@ const wechatUploading = ref(false)
 const alipayUploading = ref(false)
 const wechatInputRef = ref(null)
 const alipayInputRef = ref(null)
+
+// 密码修改表单
+const pwdForm = reactive({
+  old_password: '',
+  new_password: '',
+  confirm_password: '',
+})
+const pwdSaving = ref(false)
 
 // 图片版本号，用于上传后刷新缓存
 const imgVersion = ref(Date.now())
@@ -256,6 +312,48 @@ function compressImage(file, maxWidth = 800, quality = 0.8) {
   })
 }
 
+// 修改密码
+async function handleChangePassword() {
+  if (!pwdForm.old_password || !pwdForm.new_password || !pwdForm.confirm_password) {
+    showToast('请填写完整密码信息')
+    return
+  }
+  if (pwdForm.new_password.length < 6) {
+    showToast('新密码至少6位')
+    return
+  }
+  if (pwdForm.new_password !== pwdForm.confirm_password) {
+    showToast('两次输入的新密码不一致')
+    return
+  }
+
+  pwdSaving.value = true
+  try {
+    await changePassword({
+      old_password: pwdForm.old_password,
+      new_password: pwdForm.new_password,
+    })
+    showConfirmDialog({
+      title: '密码修改成功',
+      message: '共享密码已更新，商家端和骑手端都需要重新登录。是否立即退出？',
+      confirmButtonText: '退出登录',
+      cancelButtonText: '留在此页',
+    })
+      .then(() => {
+        localStorage.removeItem('owner_token')
+        router.replace('/admin')
+      })
+      .catch(() => {})
+    pwdForm.old_password = ''
+    pwdForm.new_password = ''
+    pwdForm.confirm_password = ''
+  } catch (e) {
+    showToast(e.response?.data?.message || '密码修改失败')
+  } finally {
+    pwdSaving.value = false
+  }
+}
+
 onMounted(() => {
   loadQrCodes()
 })
@@ -360,6 +458,30 @@ onMounted(() => {
 /* 上传按钮区域 */
 .qr-actions {
   margin-top: 4px;
+}
+
+/* 密码修改卡片 */
+.password-card {
+  padding: 16px 0 20px;
+}
+
+.password-tips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 12px;
+  font-size: 12px;
+  color: var(--color-primary-dark);
+}
+
+.password-form {
+  margin-bottom: 16px;
+}
+
+.password-btn {
+  margin: 0 16px;
+  width: calc(100% - 32px);
+  font-weight: 600;
 }
 
 /* 底部提示 */

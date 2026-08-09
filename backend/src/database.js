@@ -46,7 +46,9 @@ let data = {
   orders: [],
   payment_records: [],
   settings: [],
-  _counters: { categories: 0, dishes: 0, orders: 0, payment_records: 0, settings: 0 }
+  customers: [],
+  verification_codes: [],
+  _counters: { categories: 0, dishes: 0, orders: 0, payment_records: 0, settings: 0, customers: 0, verification_codes: 0 }
 };
 
 function loadData() {
@@ -92,6 +94,11 @@ function seedData() {
   }
   if (!data.settings.find(s => s.key === 'alipay_qr')) {
     data.settings.push({ id: nextId('settings'), key: 'alipay_qr', value: '/alipay-qr.jpeg', created_at: now() });
+  }
+
+  // 初始化共享密码（默认使用环境变量或默认值）
+  if (!data.settings.find(s => s.key === 'shared_password')) {
+    data.settings.push({ id: nextId('settings'), key: 'shared_password', value: process.env.SHARED_PASSWORD || 'baji-2026', created_at: now() });
   }
 
   if (data.categories.length > 0) {

@@ -12,16 +12,17 @@
  */
 const express = require('express');
 const { db } = require('../database');
-const { riderAuth, RIDER_TOKEN } = require('../middleware/auth');
+const { riderAuth, getSharedPassword } = require('../middleware/auth');
 const { addRiderClient, broadcastOrderStatusChange } = require('../services/notify');
 
 const router = express.Router();
 
-// SSE 端点通过 query 参数鉴权，其余走 header 鉴权
+// SSE 端点通过 query 参数鉴权（使用数据库中的共享密码），其余走 header 鉴权
 router.use((req, res, next) => {
   if (req.path === '/order-stream') {
     const token = req.query.token;
-    if (token !== RIDER_TOKEN) {
+    const password = getSharedPassword();
+    if (token !== password) {
       return res.status(401).json({ code: 401, message: '未授权' });
     }
     return addRiderClient(res);

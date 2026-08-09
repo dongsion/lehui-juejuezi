@@ -39,11 +39,11 @@ function generatePickupCode() {
 /**
  * POST /api/orders
  * 创建订单
- * 请求体：{ items: [{ dish_id, quantity }], customer_note, dine_type, table_number }
+ * 请求体：{ items: [{ dish_id, quantity }], customer_note, dine_type, table_number, customer_phone, customer_nickname }
  * 返回：{ id, order_no, total_amount, status }
  */
 router.post('/', (req, res) => {
-  const { items, customer_note, dine_type, table_number } = req.body;
+  const { items, customer_note, dine_type, table_number, customer_phone, customer_nickname } = req.body;
 
   // 参数校验：items 不能为空
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -113,11 +113,11 @@ router.post('/', (req, res) => {
 
   // 写入数据库
   const insertOrder = db.prepare(`
-    INSERT INTO orders (id, order_no, pickup_code, status, total_amount, items_json, customer_note, dine_type, table_number, payment_status)
-    VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, 'unpaid')
+    INSERT INTO orders (id, order_no, pickup_code, status, total_amount, items_json, customer_note, dine_type, table_number, payment_status, customer_phone, customer_nickname)
+    VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, 'unpaid', ?, ?)
   `);
 
-  insertOrder.run(orderId, orderNo, pickupCode, totalAmount, itemsJson, customer_note || null, dine_type || null, table_number || null);
+  insertOrder.run(orderId, orderNo, pickupCode, totalAmount, itemsJson, customer_note || null, dine_type || null, table_number || null, customer_phone || null, customer_nickname || null);
 
   // ★ 顾客下单成功 → 实时推送给在线商家浏览器
   broadcastNewOrder({
@@ -129,6 +129,8 @@ router.post('/', (req, res) => {
     customer_note: customer_note || null,
     dine_type: dine_type || null,
     table_number: table_number || null,
+    customer_phone: customer_phone || null,
+    customer_nickname: customer_nickname || null,
     created_at: new Date().toISOString(),
   });
 
@@ -173,6 +175,8 @@ router.get('/:id', (req, res) => {
     customer_note: order.customer_note,
     dine_type: order.dine_type,
     table_number: order.table_number,
+    customer_phone: order.customer_phone,
+    customer_nickname: order.customer_nickname,
     payment_channel: order.payment_channel,
     payment_status: order.payment_status,
     created_at: order.created_at,

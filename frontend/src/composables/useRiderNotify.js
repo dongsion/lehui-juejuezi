@@ -130,7 +130,7 @@ export function useRiderNotify() {
       eventSource.close()
     }
 
-    const token = localStorage.getItem('rider_token') || 'baji-rider-2026'
+    const token = localStorage.getItem('rider_token') || 'baji-2026'
 
     const apiBase = import.meta.env.VITE_API_BASE || '/api'
     eventSource = new EventSource(`${apiBase}/rider/order-stream?token=${token}`)

@@ -17,12 +17,12 @@
           <van-icon name="logistics" size="48" color="#1677FF" />
         </div>
         <div class="auth-title">乐荟绝绝子 · 骑手登录</div>
-        <div class="auth-desc">请输入骑手密码进入配送看板</div>
+        <div class="auth-desc">请输入共享密码进入配送看板</div>
         <van-field
           v-model="password"
           type="password"
           label="密码"
-          placeholder="请输入骑手密码"
+          placeholder="请输入共享密码"
           :border="false"
           class="auth-input"
           @keyup.enter="handleLogin"
@@ -201,7 +201,7 @@ import { useRiderNotify } from '../../composables/useRiderNotify'
 defineOptions({ name: 'RiderDashboard' })
 
 // 骑手端令牌存储 key
-// 密码由后端环境变量 RIDER_TOKEN 控制，前端不硬编码
+// 使用共享密码（与商家端共用），存储在 localStorage 中作为 token
 const TOKEN_KEY = 'rider_token'
 
 const authed = ref(false)

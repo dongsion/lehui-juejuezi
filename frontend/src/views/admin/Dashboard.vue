@@ -122,8 +122,8 @@
               <span>菜品管理</span>
             </div>
             <div class="nav-item card" @click="router.push('/admin/settings')">
-              <van-icon name="qr" size="28" color="#C2623F" />
-              <span>收款码设置</span>
+              <van-icon name="setting-o" size="28" color="#C2623F" />
+              <span>系统设置</span>
             </div>
             <div class="nav-item card" @click="router.push('/rider')">
               <van-icon name="logistics" size="28" color="#1677FF" />
@@ -150,10 +150,9 @@ import { useOrderNotify } from '../../composables/useOrderNotify'
 const router = useRouter()
 
 // 老板端令牌存储 key
-// 密码由后端环境变量 OWNER_TOKEN 控制，前端不硬编码
-// 用户输入密码后直接作为 token 发送给后端验证
+// 使用共享密码（与骑手端共用），存储在 localStorage 中作为 token
 const TOKEN_KEY = 'owner_token'
-const DEFAULT_OWNER_PASSWORD = 'baji-owner-2026'
+const DEFAULT_OWNER_PASSWORD = 'baji-2026'
 
 const authed = ref(false)
 const password = ref('')
