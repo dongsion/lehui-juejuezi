@@ -3,8 +3,8 @@
     <!-- 顶部店招 banner（渐变） -->
     <div class="shop-banner">
       <div class="banner-inner">
-        <div class="shop-name">小暖咖啡馆</div>
-        <div class="shop-slogan">每一杯，都是温暖的相遇</div>
+        <div class="shop-name">乐荟绝绝子</div>
+        <div class="shop-slogan">新鲜好味，绝绝子体验</div>
       </div>
       <div class="banner-decoration"></div>
     </div>

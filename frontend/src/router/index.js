@@ -55,7 +55,7 @@ const router = createRouter({
 
 router.afterEach((to) => {
   if (to.meta?.title) {
-    document.title = `${to.meta.title} · 小暖咖啡馆`
+    document.title = `${to.meta.title} · 乐荟绝绝子`
   }
 })
 

@@ -16,7 +16,7 @@
         <div class="auth-icon">
           <van-icon name="logistics" size="48" color="#1677FF" />
         </div>
-        <div class="auth-title">骑手登录</div>
+        <div class="auth-title">乐荟绝绝子 · 骑手登录</div>
         <div class="auth-desc">请输入骑手密码进入配送看板</div>
         <van-field
           v-model="password"

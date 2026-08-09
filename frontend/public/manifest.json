@@ -1,7 +1,7 @@
 {
-  "name": "小暖咖啡馆 - 点单",
-  "short_name": "小暖点单",
-  "description": "小暖咖啡馆移动端点单应用",
+  "name": "乐荟绝绝子 - 点单",
+  "short_name": "乐荟点单",
+  "description": "乐荟绝绝子移动端点单应用",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FBF8F4",

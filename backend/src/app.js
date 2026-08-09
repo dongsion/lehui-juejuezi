@@ -37,7 +37,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // 健康检查接口
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: '点单收银后端服务运行中' });
+  res.json({ status: 'ok', message: '乐荟绝绝子后端服务运行中' });
 });
 
 // 挂载 API 路由（所有 API 路径以 /api 开头）
@@ -80,7 +80,7 @@ app.use((err, req, res, next) => {
 
 // 启动 HTTP 服务
 app.listen(PORT, () => {
-  console.log(`点单收银服务已启动，监听端口 ${PORT}`);
+  console.log(`乐荟绝绝子服务已启动，监听端口 ${PORT}`);
   console.log(`菜单接口：http://localhost:${PORT}/api/menu`);
   console.log(`健康检查：http://localhost:${PORT}/api/health`);
   console.log(`前端页面：http://localhost:${PORT}/`);

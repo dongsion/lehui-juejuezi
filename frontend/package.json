@@ -1,7 +1,7 @@
 {
-  "name": "baji-clone-frontend",
+  "name": "lehui-juejuezi-frontend",
   "version": "1.0.0",
-  "description": "小暖咖啡馆 - 移动端 H5 点单应用 (PWA)",
+  "description": "乐荟绝绝子 - 移动端 H5 点单应用 (PWA)",
   "type": "module",
   "scripts": {
     "dev": "vite",

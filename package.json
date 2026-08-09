@@ -1,7 +1,7 @@
 {
-  "name": "baji-ordering-system",
+  "name": "lehui-juejuezi",
   "version": "1.0.0",
-  "description": "小暖咖啡馆 - 单店点单收银系统（前端 + 后端单应用部署）",
+  "description": "乐荟绝绝子 - 单店点单收银系统（前端 + 后端单应用部署）",
   "private": true,
   "scripts": {
     "install:frontend": "cd frontend && npm ci",

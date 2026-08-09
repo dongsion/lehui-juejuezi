@@ -16,7 +16,7 @@
         <div class="auth-icon">
           <van-icon name="manager-o" size="48" color="#C2623F" />
         </div>
-        <div class="auth-title">老板登录</div>
+        <div class="auth-title">乐荟绝绝子 · 商家登录</div>
         <div class="auth-desc">请输入管理密码进入经营看板</div>
         <van-field
           v-model="password"
