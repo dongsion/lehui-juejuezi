@@ -1,6 +1,6 @@
 # 前端 Dockerfile
 # 多阶段构建：先用 Node 编译 Vue3 静态文件，再用 Nginx 托管
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 

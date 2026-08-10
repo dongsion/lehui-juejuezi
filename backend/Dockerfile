@@ -1,6 +1,6 @@
 # 后端 Dockerfile
 # 纯 JS 实现（JSON 文件存储），无需编译原生模块
-FROM node:18-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
