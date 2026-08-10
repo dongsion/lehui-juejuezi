@@ -454,6 +454,34 @@ router.put('/orders/:id/status', (req, res) => {
 });
 
 /**
+ * DELETE /api/admin/orders/:id
+ * 商家自由删除订单，同时删除关联支付记录。
+ */
+router.delete('/orders/:id', (req, res) => {
+  const { id } = req.params;
+
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+  if (!order) {
+    return res.status(404).json({ code: 404, message: '订单不存在' });
+  }
+
+  db.prepare('DELETE FROM payment_records WHERE order_id = ?').run(id);
+  db.prepare('DELETE FROM orders WHERE id = ?').run(id);
+
+  broadcastOrderStatusChange({
+    order_id: id,
+    order_no: order.order_no,
+    status: 'deleted',
+  });
+
+  res.json({
+    order_id: id,
+    order_no: order.order_no,
+    message: '订单已删除',
+  });
+});
+
+/**
  * PUT /api/admin/categories/:id
  * 更新分类（名称、排序、启用状态）
  */
@@ -509,28 +537,40 @@ router.delete('/categories/:id', (req, res) => {
 
 /**
  * GET /api/admin/stats
- * 获取今日经营统计
+ * 获取经营统计
  */
 router.get('/stats', (req, res) => {
-  const todayStats = db.prepare(`
-    SELECT
-      COUNT(*) as today_orders,
-      COALESCE(SUM(total_amount), 0) as today_revenue
-    FROM orders
-    WHERE payment_status = 'paid' AND date(created_at) = date('now', 'localtime')
-  `).get();
-
-  const todayOrders = todayStats.today_orders || 0;
-  const todayRevenue = todayStats.today_revenue || 0;
-  const avgOrderValue = todayOrders > 0 ? Math.round((todayRevenue / todayOrders) * 100) / 100 : 0;
-
   const paidOrders = db.prepare(`
-    SELECT items_json FROM orders
-    WHERE payment_status = 'paid' AND date(created_at) = date('now', 'localtime')
+    SELECT * FROM orders
+    WHERE payment_status = 'paid'
   `).all();
 
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayPrefix = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const monthPrefix = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  const yearPrefix = `${now.getFullYear()}`;
+
+  const isInPeriod = (order, prefix) => {
+    const time = String(order.paid_at || order.created_at || '');
+    return time.startsWith(prefix);
+  };
+
+  const sumAmount = (orders) =>
+    Math.round(orders.reduce((acc, order) => acc + (Number(order.total_amount) || 0), 0) * 100) / 100;
+
+  const todayPaidOrders = paidOrders.filter((order) => isInPeriod(order, todayPrefix));
+  const monthPaidOrders = paidOrders.filter((order) => isInPeriod(order, monthPrefix));
+  const yearPaidOrders = paidOrders.filter((order) => isInPeriod(order, yearPrefix));
+
+  const todayOrders = todayPaidOrders.length;
+  const todayRevenue = sumAmount(todayPaidOrders);
+  const monthRevenue = sumAmount(monthPaidOrders);
+  const yearRevenue = sumAmount(yearPaidOrders);
+  const avgOrderValue = todayOrders > 0 ? Math.round((todayRevenue / todayOrders) * 100) / 100 : 0;
+
   const dishStats = {};
-  paidOrders.forEach((order) => {
+  todayPaidOrders.forEach((order) => {
     let items = [];
     try {
       items = JSON.parse(order.items_json);
@@ -557,6 +597,8 @@ router.get('/stats', (req, res) => {
 
   res.json({
     today_revenue: todayRevenue,
+    month_revenue: monthRevenue,
+    year_revenue: yearRevenue,
     today_orders: todayOrders,
     avg_order_value: avgOrderValue,
     top_dishes: topDishes,

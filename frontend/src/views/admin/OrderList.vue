@@ -150,6 +150,14 @@
               >
                 取消订单
               </van-button>
+              <van-button
+                size="small"
+                type="danger"
+                :loading="actionId === order.id"
+                @click="handleDelete(order)"
+              >
+                删除订单
+              </van-button>
             </div>
           </div>
         </div>
@@ -166,7 +174,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
-import { getAdminOrders, updateAdminOrderStatus, verifyAdminPayment } from '../../api'
+import { getAdminOrders, updateAdminOrderStatus, verifyAdminPayment, deleteAdminOrder } from '../../api'
 
 const router = useRouter()
 
@@ -327,6 +335,32 @@ function handleCancel(order) {
         loadOrders()
       } catch (e) {
         showToast(e.response?.data?.message || '操作失败')
+      } finally {
+        actionId.value = null
+      }
+    })
+    .catch(() => {})
+}
+
+// 删除订单
+function handleDelete(order) {
+  showConfirmDialog({
+    title: '确认删除订单',
+    message: `确定要彻底删除订单「${order.order_no || order.id}」吗？删除后不可恢复。`,
+    confirmButtonText: '删除',
+    confirmButtonColor: '#D9534F'
+  })
+    .then(async () => {
+      actionId.value = order.id
+      try {
+        await deleteAdminOrder(order.id)
+        showToast({ type: 'success', message: '订单已删除' })
+        if (expandedId.value === order.id) {
+          expandedId.value = null
+        }
+        loadOrders()
+      } catch (e) {
+        showToast(e.response?.data?.message || '删除失败')
       } finally {
         actionId.value = null
       }

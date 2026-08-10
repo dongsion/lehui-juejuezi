@@ -98,6 +98,9 @@ export const deleteDish = (id) => request.delete(`/admin/dishes/${id}`)
 export const updateAdminOrderStatus = (id, status) =>
   request.put(`/admin/orders/${id}/status`, { status })
 
+// 商家删除订单
+export const deleteAdminOrder = (id) => request.delete(`/admin/orders/${id}`)
+
 // 商家核实收款（confirm | reject）
 export const verifyAdminPayment = (id, action) =>
   request.put(`/admin/orders/${id}/payment`, { action })

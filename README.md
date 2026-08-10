@@ -41,9 +41,9 @@ npm run dev
 - 订单详情实时状态轮询（每5秒自动刷新）
 
 ### 商家端（默认密码：baji-2026）
-- 经营看板：今日营收、订单数、客单价、热销排行
+- 经营看板：今日营收、本月营收、全年营收、订单数、客单价、热销排行
 - 实时订单推送（SSE + 提示音 + 桌面通知）
-- 订单管理：按状态筛选、核实收款、完成订单、取消订单
+- 订单管理：按状态筛选、核实收款、完成订单、取消订单、删除订单
 - 菜品管理：新增/编辑/上下架/删除
 - 分类管理：新增/启用停用/删除分类
 - 菜单变更实时推送到顾客端
@@ -88,6 +88,7 @@ npm run dev
 | GET | /api/admin/orders | 订单列表 |
 | PUT | /api/admin/orders/:id/payment | 核实收款（确认到账/未到账驳回） |
 | PUT | /api/admin/orders/:id/status | 更新订单状态（完成/取消） |
+| DELETE | /api/admin/orders/:id | 删除订单 |
 | GET | /api/admin/dishes | 菜品列表 |
 | POST | /api/admin/dishes | 新增菜品 |
 | PUT | /api/admin/dishes/:id | 编辑菜品 |

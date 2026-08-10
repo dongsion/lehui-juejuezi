@@ -73,6 +73,22 @@
           </div>
 
           <div class="stat-card card">
+            <div class="stat-icon month-icon">
+              <van-icon name="chart-trending-o" size="22" />
+            </div>
+            <div class="stat-value">¥{{ formatPrice(stats.month_revenue) }}</div>
+            <div class="stat-label">本月营收</div>
+          </div>
+
+          <div class="stat-card card">
+            <div class="stat-icon year-icon">
+              <van-icon name="gold-coin-o" size="22" />
+            </div>
+            <div class="stat-value">¥{{ formatPrice(stats.year_revenue) }}</div>
+            <div class="stat-label">全年营收</div>
+          </div>
+
+          <div class="stat-card card">
             <div class="stat-icon order-icon">
               <van-icon name="orders-o" size="22" />
             </div>
@@ -130,10 +146,6 @@
             <div class="nav-item card" @click="router.push('/rider')">
               <van-icon name="logistics" size="28" color="#1677FF" />
               <span>骑手端</span>
-            </div>
-            <div class="nav-item card" @click="router.push('/')">
-              <van-icon name="point-gift-o" size="28" color="#C2623F" />
-              <span>顾客点单</span>
             </div>
           </div>
         </div>
@@ -449,6 +461,14 @@ async function loadStats() {
 
 .avg-icon {
   background-color: #67B279;
+}
+
+.month-icon {
+  background-color: #1677FF;
+}
+
+.year-icon {
+  background-color: #8E6AD8;
 }
 
 .stat-value {
