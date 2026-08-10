@@ -24,6 +24,21 @@
       @select="onCustomerAction"
     />
 
+    <!-- 最近订单入口 -->
+    <div v-if="latestOrder" class="latest-order-card card" @click="goLatestOrder">
+      <div class="latest-order-left">
+        <div class="latest-order-title">
+          <van-icon name="orders-o" size="16" />
+          <span>最近订单</span>
+        </div>
+        <div class="latest-order-no">订单号：{{ latestOrder.order_no || latestOrder.id }}</div>
+      </div>
+      <div class="latest-order-right">
+        <van-tag :type="latestOrderTagType" plain>{{ latestOrderStatusText }}</van-tag>
+        <van-icon name="arrow" size="14" color="#999" />
+      </div>
+    </div>
+
     <!-- 菜单区域：左侧分类侧边栏 + 右侧菜品列表 -->
     <div class="menu-wrap">
       <!-- 加载状态 -->
@@ -201,7 +216,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
-import { getMenu, createOrder } from '../api'
+import { getMenu, createOrder, getOrder } from '../api'
 import { useCartStore } from '../stores/cart'
 
 defineOptions({ name: 'OrderPage' })
@@ -225,6 +240,9 @@ const showCustomerMenu = ref(false)
 const customerActions = [
   { name: '退出登录', color: '#D9534F' },
 ]
+
+// 最近订单入口
+const latestOrder = ref(null)
 
 // ============ 顾客端菜单 SSE — 监听商家修改菜单后实时刷新 ============
 let menuEventSource = null
@@ -284,6 +302,51 @@ function categoryCount(catId) {
 // 格式化价格
 function formatPrice(val) {
   return Number(val).toFixed(2)
+}
+
+const latestOrderStatusText = computed(() => {
+  if (!latestOrder.value) return ''
+  const paymentStatus = latestOrder.value.payment_status
+  const status = latestOrder.value.status
+  if (status === 'cancelled') return '已取消'
+  if (status === 'completed') return '已完成'
+  if (status === 'delivering') return '配送中'
+  if (paymentStatus === 'verifying') return '付款待核实'
+  if (status === 'confirmed' && paymentStatus === 'paid') return '商家已确认'
+  if (paymentStatus === 'paid') return '已支付'
+  return '待支付'
+})
+
+const latestOrderTagType = computed(() => {
+  if (!latestOrder.value) return 'default'
+  const paymentStatus = latestOrder.value.payment_status
+  const status = latestOrder.value.status
+  if (status === 'cancelled') return 'danger'
+  if (status === 'completed') return 'success'
+  if (paymentStatus === 'verifying') return 'warning'
+  if (paymentStatus === 'paid' || status === 'confirmed' || status === 'delivering') return 'primary'
+  return 'warning'
+})
+
+async function loadLatestOrder() {
+  const orderId = localStorage.getItem('latest_order_id')
+  if (!orderId) {
+    latestOrder.value = null
+    return
+  }
+
+  try {
+    const data = await getOrder(orderId)
+    latestOrder.value = data.order || data.data || data
+  } catch (e) {
+    latestOrder.value = null
+    localStorage.removeItem('latest_order_id')
+  }
+}
+
+function goLatestOrder() {
+  if (!latestOrder.value?.id) return
+  router.push(`/order/${latestOrder.value.id}`)
 }
 
 // 加载菜单
@@ -357,6 +420,7 @@ async function handleSubmit() {
     }
     const res = await createOrder(payload)
     const orderId = res.order_id || res.id || res.orderId
+    localStorage.setItem('latest_order_id', orderId)
     // 下单成功后清空购物车并跳转订单详情
     cart.clear()
     customerNote.value = ''
@@ -382,6 +446,7 @@ function onCustomerAction(action) {
         localStorage.removeItem('customer_id')
         localStorage.removeItem('customer_phone')
         localStorage.removeItem('customer_nickname')
+        localStorage.removeItem('latest_order_id')
         showToast('已退出登录')
         router.replace('/login')
       })
@@ -391,11 +456,14 @@ function onCustomerAction(action) {
 
 onMounted(() => {
   loadMenu()
+  loadLatestOrder()
+  window.addEventListener('focus', loadLatestOrder)
   // 连接菜单 SSE — 商家修改菜单后自动刷新
   connectMenuStream()
 })
 
 onUnmounted(() => {
+  window.removeEventListener('focus', loadLatestOrder)
   disconnectMenuStream()
 })
 </script>
@@ -457,6 +525,49 @@ onUnmounted(() => {
   border-radius: 20px;
   z-index: 1;
   cursor: pointer;
+}
+
+/* 最近订单入口 */
+.latest-order-card {
+  margin: -12px 16px 12px;
+  padding: 14px 16px;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.latest-order-left {
+  min-width: 0;
+  flex: 1;
+}
+
+.latest-order-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.latest-order-no {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.latest-order-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .customer-badge .customer-name {

@@ -239,6 +239,9 @@ async function loadOrder() {
     const id = route.params.id
     const data = await getOrder(id)
     order.value = data.order || data.data || data
+    if (order.value?.id) {
+      localStorage.setItem('latest_order_id', order.value.id)
+    }
   } catch (e) {
     loadError.value = e.response?.data?.message || '订单加载失败'
   } finally {
