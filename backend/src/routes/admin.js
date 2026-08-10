@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { db } = require('../database');
 const { ownerAuth, getSharedPassword } = require('../middleware/auth');
-const { addMerchantClient, broadcastMenuUpdate, broadcastOrderStatusChange } = require('../services/notify');
+const { addMerchantClient, broadcastMenuUpdate, broadcastOrderStatusChange, broadcastPaymentSuccess } = require('../services/notify');
 
 const router = express.Router();
 
@@ -135,9 +135,9 @@ router.get('/orders', (req, res) => {
   const params = [];
 
   if (status) {
-    if (['paid', 'unpaid', 'pending'].includes(status)) {
+    if (['paid', 'unpaid', 'pending', 'verifying'].includes(status)) {
       sql += ' AND payment_status = ?';
-      params.push(status);
+      params.push(status === 'pending' ? 'unpaid' : status);
     } else {
       sql += ' AND status = ?';
       params.push(status);
@@ -320,6 +320,91 @@ router.post('/categories', (req, res) => {
   res.status(201).json({
     id: result.lastInsertRowid,
     message: '分类创建成功',
+  });
+});
+
+/**
+ * PUT /api/admin/orders/:id/payment
+ * 商家核实收款：确认到账或驳回未到账
+ * 请求体：{ action: 'confirm' | 'reject' }
+ */
+router.put('/orders/:id/payment', (req, res) => {
+  const { id } = req.params;
+  const { action } = req.body;
+
+  if (!['confirm', 'reject'].includes(action)) {
+    return res.status(400).json({ code: 400, message: 'action 必须为 confirm 或 reject' });
+  }
+
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+  if (!order) {
+    return res.status(404).json({ code: 404, message: '订单不存在' });
+  }
+
+  if (order.payment_status !== 'verifying') {
+    return res.status(400).json({ code: 400, message: '该订单不在待核实状态' });
+  }
+
+  const channel = order.payment_channel || 'wechat';
+
+  if (action === 'confirm') {
+    const transactionId = `qr_${channel}_${Date.now()}`;
+    db.prepare(`
+      UPDATE orders
+      SET status = 'confirmed', payment_status = 'paid', paid_at = datetime('now', 'localtime')
+      WHERE id = ?
+    `).run(id);
+
+    db.prepare(`
+      UPDATE payment_records
+      SET status = 'success', transaction_id = ?, raw_response = ?
+      WHERE order_id = ? AND channel = ? AND status = 'verifying'
+    `).run(
+      transactionId,
+      JSON.stringify({ verified_by: 'merchant', channel, transaction_id: transactionId, paid_at: new Date().toISOString() }),
+      id,
+      channel
+    );
+
+    broadcastPaymentSuccess({ order_id: id, payment_channel: channel });
+
+    return res.json({
+      order_id: id,
+      order_no: order.order_no,
+      payment_status: 'paid',
+      status: 'confirmed',
+      message: '已确认到账，订单进入待配送',
+    });
+  }
+
+  db.prepare(`
+    UPDATE orders
+    SET status = 'pending', payment_status = 'unpaid'
+    WHERE id = ?
+  `).run(id);
+
+  db.prepare(`
+    UPDATE payment_records
+    SET status = 'rejected', raw_response = ?
+    WHERE order_id = ? AND channel = ? AND status = 'verifying'
+  `).run(
+    JSON.stringify({ verified_by: 'merchant', rejected_at: new Date().toISOString(), reason: 'merchant_not_received' }),
+    id,
+    channel
+  );
+
+  broadcastOrderStatusChange({
+    order_id: id,
+    order_no: order.order_no,
+    status: 'payment_rejected',
+  });
+
+  res.json({
+    order_id: id,
+    order_no: order.order_no,
+    payment_status: 'unpaid',
+    status: 'pending',
+    message: '已驳回付款确认，订单恢复待支付',
   });
 });
 

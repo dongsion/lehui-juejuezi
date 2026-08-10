@@ -173,10 +173,14 @@ function onOrderReceived() {
 function onOrderPaid() {
   loadStats()
 }
+function onPaymentVerifying() {
+  loadStats()
+}
 
 onMounted(() => {
   window.addEventListener('order:received', onOrderReceived)
   window.addEventListener('order:paid', onOrderPaid)
+  window.addEventListener('order:payment-verifying', onPaymentVerifying)
   // 检查 localStorage 中是否已有 token，自动登录并验证
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
@@ -193,6 +197,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('order:received', onOrderReceived)
   window.removeEventListener('order:paid', onOrderPaid)
+  window.removeEventListener('order:payment-verifying', onPaymentVerifying)
   disconnect()
 })
 

@@ -140,6 +140,24 @@ function broadcastPaymentSuccess(data) {
 }
 
 /**
+ * 推送顾客已提交付款确认通知 → 仅商家端
+ * 收款码模式下，顾客点击“我已支付”不代表真实到账，需要商家核实。
+ */
+function broadcastPaymentVerifying(data) {
+  const payload = {
+    type: 'payment_verifying',
+    order_id: data.order_id,
+    order_no: data.order_no || '',
+    amount: data.amount || 0,
+    payment_channel: data.payment_channel || '',
+    timestamp: Date.now(),
+  };
+
+  const sent = pushToClients(merchantClients, 'payment_verifying', payload, '商家');
+  console.log(`[SSE] 待核实付款通知已推送给 ${sent} 个商家`);
+}
+
+/**
  * 推送订单状态变更通知 → 商家端
  * 骑手更新订单配送状态时调用
  */
@@ -178,6 +196,7 @@ module.exports = {
   addCustomerClient,
   broadcastNewOrder,
   broadcastPaymentSuccess,
+  broadcastPaymentVerifying,
   broadcastOrderStatusChange,
   broadcastMenuUpdate,
 };

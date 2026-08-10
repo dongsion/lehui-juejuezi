@@ -8,8 +8,9 @@
  * 【原理】
  *   1. 顾客下单 → 后端返回收款码图片路径 + 订单信息
  *   2. 前端显示收款码 + 金额 + "我已支付"按钮
- *   3. 顾客扫码付款后点击"已支付" → 调用 /api/payment/confirm 接口
- *   4. 后端将订单标记为已支付 → SSE 推送通知给商家
+ *   3. 顾客扫码付款后点击"我已支付" → 调用 /api/payment/confirm 接口
+ *   4. 后端将订单标记为待核实 → SSE 推送通知给商家
+ *   5. 商家核实到账后在后台确认收款 → 订单才会标记为已支付
  *
  * 【后续升级到真实支付时】
  * 只需将 /create 接口改为调用微信/支付宝官方 API 返回支付链接，
@@ -19,7 +20,7 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
 const { db } = require('../database');
-const { broadcastPaymentSuccess } = require('../services/notify');
+const { broadcastPaymentSuccess, broadcastPaymentVerifying } = require('../services/notify');
 
 const router = express.Router();
 
@@ -55,9 +56,12 @@ router.post('/create', (req, res) => {
     return res.status(404).json({ code: 404, message: '订单不存在' });
   }
 
-  // 校验订单是否已支付
+  // 校验订单支付状态
   if (order.payment_status === 'paid') {
     return res.status(400).json({ code: 400, message: '该订单已支付' });
+  }
+  if (order.payment_status === 'verifying') {
+    return res.status(400).json({ code: 400, message: '该订单已提交付款确认，等待商家核实' });
   }
 
   // 创建支付记录
@@ -91,7 +95,7 @@ router.post('/create', (req, res) => {
  * 顾客确认支付（个人收款码模式专用）
  *
  * 顾客扫码付款后点击"我已支付"按钮，前端调用此接口。
- * 后端将订单标记为已支付，并推送通知给商家。
+ * 后端只将订单标记为待核实，并推送通知给商家。
  *
  * 注意：此模式下商家需自行核对到账，系统无法自动验证收款。
  *
@@ -105,7 +109,7 @@ router.post('/confirm', (req, res) => {
     return res.status(400).json({ code: 400, message: '缺少 order_id' });
   }
 
-  const order = db.prepare('SELECT id, payment_channel, payment_status FROM orders WHERE id = ?').get(order_id);
+  const order = db.prepare('SELECT id, order_no, total_amount, payment_channel, payment_status FROM orders WHERE id = ?').get(order_id);
   if (!order) {
     return res.status(404).json({ code: 404, message: '订单不存在' });
   }
@@ -113,16 +117,37 @@ router.post('/confirm', (req, res) => {
   if (order.payment_status === 'paid') {
     return res.status(400).json({ code: 400, message: '该订单已支付' });
   }
+  if (order.payment_status === 'verifying') {
+    return res.json({ code: 'SUCCESS', message: '已提交付款确认，请等待商家核实' });
+  }
 
   const channel = order.payment_channel || 'wechat';
-  const transactionId = `qr_${channel}_${Date.now()}`;
 
-  markOrderAsPaid(order_id, channel, transactionId);
+  db.prepare(`
+    UPDATE orders
+    SET payment_status = 'verifying'
+    WHERE id = ?
+  `).run(order_id);
 
-  // ★ 支付成功 → 推送通知给在线商家浏览器
-  broadcastPaymentSuccess({ order_id, payment_channel: channel });
+  db.prepare(`
+    UPDATE payment_records
+    SET status = 'verifying', raw_response = ?
+    WHERE order_id = ? AND channel = ? AND status = 'pending'
+  `).run(
+    JSON.stringify({ mode: 'qr_code', customer_confirmed_at: new Date().toISOString() }),
+    order_id,
+    channel
+  );
 
-  res.json({ code: 'SUCCESS', message: '支付确认成功，商家将尽快核实' });
+  // ★ 顾客提交付款确认 → 仅推送给商家核实，不推给骑手
+  broadcastPaymentVerifying({
+    order_id,
+    order_no: order.order_no,
+    amount: order.total_amount,
+    payment_channel: channel,
+  });
+
+  res.json({ code: 'SUCCESS', message: '已提交付款确认，请等待商家核实到账' });
 });
 
 /**

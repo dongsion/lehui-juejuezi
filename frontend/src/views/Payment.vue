@@ -109,13 +109,13 @@
         </div>
       </div>
 
-      <!-- 成功页面 -->
+      <!-- 已提交核实页面 -->
       <div class="success-area" v-if="step === 'success'">
         <div class="success-icon">
-          <van-icon name="checked" size="64" color="#67B279" />
+          <van-icon name="clock-o" size="64" color="#E0A93B" />
         </div>
-        <div class="success-title">支付确认成功</div>
-        <div class="success-desc">商家将尽快核实到账并确认订单</div>
+        <div class="success-title">已提交付款确认</div>
+        <div class="success-desc">请等待商家核实到账，到账确认后订单才会生效</div>
         <van-button
           round
           type="primary"
@@ -219,7 +219,7 @@ async function handleConfirmPay() {
     })
 
     step.value = 'success'
-    showToast({ type: 'success', message: '支付确认成功' })
+    showToast({ type: 'success', message: '已提交付款确认' })
   } catch (e) {
     showToast(e.response?.data?.message || '确认失败，请重试')
   } finally {

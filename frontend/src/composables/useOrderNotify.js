@@ -141,6 +141,23 @@ export function useOrderNotify() {
     )
   }
 
+  // ============ 处理待核实付款 ============
+  function handlePaymentVerifying(data) {
+    console.log('[通知] 付款待核实:', data.order_id)
+
+    playBeep()
+
+    showNotify({
+      type: 'warning',
+      message: `付款待核实 ¥${data.amount || ''} — ${data.order_no || data.order_id}`,
+      duration: 5000,
+    })
+
+    window.dispatchEvent(
+      new CustomEvent('order:payment-verifying', { detail: data })
+    )
+  }
+
   // ============ 连接 SSE ============
   function connect() {
     // 关闭旧连接
@@ -179,6 +196,16 @@ export function useOrderNotify() {
         handlePaymentSuccess(data)
       } catch (err) {
         console.error('[SSE] 解析支付通知失败:', err)
+      }
+    })
+
+    // 收到待核实付款通知
+    eventSource.addEventListener('payment_verifying', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        handlePaymentVerifying(data)
+      } catch (err) {
+        console.error('[SSE] 解析待核实付款通知失败:', err)
       }
     })
 

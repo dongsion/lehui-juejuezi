@@ -17,6 +17,7 @@
     >
       <van-tab title="全部" name="all" />
       <van-tab title="待支付" name="pending" />
+      <van-tab title="待核实" name="verifying" />
       <van-tab title="已支付" name="paid" />
       <van-tab title="已完成" name="completed" />
     </van-tabs>
@@ -104,6 +105,25 @@
             </div>
             <div class="oc-detail-actions">
               <van-button
+                v-if="order.payment_status === 'verifying'"
+                size="small"
+                type="success"
+                :loading="actionId === order.id"
+                @click="handleConfirmPayment(order)"
+              >
+                确认到账
+              </van-button>
+              <van-button
+                v-if="order.payment_status === 'verifying'"
+                size="small"
+                plain
+                type="warning"
+                :loading="actionId === order.id"
+                @click="handleRejectPayment(order)"
+              >
+                未到账
+              </van-button>
+              <van-button
                 size="small"
                 plain
                 type="primary"
@@ -146,7 +166,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
-import { getAdminOrders, updateAdminOrderStatus } from '../../api'
+import { getAdminOrders, updateAdminOrderStatus, verifyAdminPayment } from '../../api'
 
 const router = useRouter()
 
@@ -162,12 +182,14 @@ function statusText(paymentStatus, status) {
   if (status === 'cancelled') return '已取消'
   if (status === 'completed') return '已完成'
   if (status === 'delivering') return '配送中'
+  if (paymentStatus === 'verifying') return '待核实'
   if (status === 'confirmed' && paymentStatus === 'paid') return '待配送'
   if (paymentStatus === 'paid') return '已支付'
   if (paymentStatus === 'unpaid') return '待支付'
   const map = {
     pending: '待支付',
     unpaid: '待支付',
+    verifying: '待核实',
     paid: '已支付',
     completed: '已完成',
     cancelled: '已取消'
@@ -180,6 +202,7 @@ function statusTagType(paymentStatus, status) {
   if (status === 'cancelled') return 'danger'
   if (status === 'completed') return 'success'
   if (status === 'delivering') return 'primary'
+  if (paymentStatus === 'verifying') return 'warning'
   if (status === 'confirmed') return 'primary'
   if (paymentStatus === 'paid') return 'primary'
   if (paymentStatus === 'pending' || paymentStatus === 'unpaid') return 'warning'
@@ -220,6 +243,51 @@ function toggleExpand(id) {
 // 跳转详情
 function goDetail(id) {
   router.push(`/order/${id}`)
+}
+
+// 确认到账
+function handleConfirmPayment(order) {
+  showConfirmDialog({
+    title: '确认到账',
+    message: `请确认订单「${order.order_no || order.id}」已真实到账 ¥${formatPrice(order.total_amount)}。确认后订单会进入待配送。`,
+    confirmButtonText: '确认到账',
+  })
+    .then(async () => {
+      actionId.value = order.id
+      try {
+        await verifyAdminPayment(order.id, 'confirm')
+        showToast({ type: 'success', message: '已确认到账' })
+        loadOrders()
+      } catch (e) {
+        showToast(e.response?.data?.message || '操作失败')
+      } finally {
+        actionId.value = null
+      }
+    })
+    .catch(() => {})
+}
+
+// 驳回付款确认
+function handleRejectPayment(order) {
+  showConfirmDialog({
+    title: '确认未到账',
+    message: `确定订单「${order.order_no || order.id}」未收到款吗？驳回后订单会恢复为待支付。`,
+    confirmButtonText: '确认未到账',
+    confirmButtonColor: '#D9534F'
+  })
+    .then(async () => {
+      actionId.value = order.id
+      try {
+        await verifyAdminPayment(order.id, 'reject')
+        showToast({ type: 'success', message: '已驳回，订单恢复待支付' })
+        loadOrders()
+      } catch (e) {
+        showToast(e.response?.data?.message || '操作失败')
+      } finally {
+        actionId.value = null
+      }
+    })
+    .catch(() => {})
 }
 
 // 完成订单
@@ -474,6 +542,8 @@ onMounted(() => {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .list-end {

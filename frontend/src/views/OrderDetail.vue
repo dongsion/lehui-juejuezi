@@ -152,6 +152,7 @@ const orderStatus = computed(() => {
   if (order.value.status === 'cancelled') return 'cancelled'
   if (order.value.status === 'completed') return 'completed'
   if (order.value.status === 'delivering') return 'delivering'
+  if (order.value.payment_status === 'verifying') return 'verifying'
   if (order.value.status === 'confirmed' && order.value.payment_status === 'paid') return 'confirmed'
   if (order.value.payment_status === 'paid') return 'paid'
   return 'pending'
@@ -162,6 +163,7 @@ const statusText = computed(() => {
   const s = orderStatus.value
   const map = {
     pending: '待支付',
+    verifying: '付款待核实',
     paid: '已支付',
     confirmed: '商家已确认',
     delivering: '配送中',
@@ -176,6 +178,7 @@ const statusTip = computed(() => {
   const s = orderStatus.value
   const map = {
     pending: '请尽快完成支付',
+    verifying: '已提交付款确认，请等待商家核实到账',
     paid: '商家正在为您准备，请留意取餐',
     confirmed: '您的订单已确认，正在准备中',
     delivering: '骑手正在配送，请耐心等待',
@@ -214,7 +217,7 @@ const pickupCode = computed(() => {
 // 是否需要轮询（未完成的订单）
 const needPolling = computed(() => {
   const s = orderStatus.value
-  return s === 'pending' || s === 'paid' || s === 'confirmed' || s === 'delivering'
+  return s === 'pending' || s === 'verifying' || s === 'paid' || s === 'confirmed' || s === 'delivering'
 })
 
 function formatPrice(val) {

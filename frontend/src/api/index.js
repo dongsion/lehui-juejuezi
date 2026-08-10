@@ -98,6 +98,10 @@ export const deleteDish = (id) => request.delete(`/admin/dishes/${id}`)
 export const updateAdminOrderStatus = (id, status) =>
   request.put(`/admin/orders/${id}/status`, { status })
 
+// 商家核实收款（confirm | reject）
+export const verifyAdminPayment = (id, action) =>
+  request.put(`/admin/orders/${id}/payment`, { action })
+
 // 新增分类
 export const addCategory = (data) => request.post('/admin/categories', data)
 
