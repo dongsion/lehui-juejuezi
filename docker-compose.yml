@@ -21,10 +21,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - OWNER_TOKEN=${OWNER_TOKEN:-baji-owner-2026}
-      - RIDER_TOKEN=${RIDER_TOKEN:-baji-rider-2026}
+      - SHARED_PASSWORD=${SHARED_PASSWORD:-baji-2026}
     volumes:
-      # SQLite 数据库持久化（订单数据不会丢失）
+      # JSON 数据文件持久化（订单数据不会丢失）
       - backend-data:/app/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
@@ -52,7 +51,7 @@ services:
     networks:
       - baji-net
 
-# 数据卷：SQLite 数据库文件
+# 数据卷：JSON 数据文件
 volumes:
   backend-data:
 

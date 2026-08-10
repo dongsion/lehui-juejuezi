@@ -13,7 +13,7 @@ services:
         value: production
       - key: PORT
         value: 3001
-      - key: OWNER_TOKEN
+      - key: SHARED_PASSWORD
         sync: false
     disk:
       name: sqlite-data

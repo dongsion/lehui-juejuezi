@@ -312,7 +312,7 @@
   <p>小暖咖啡馆点单收银系统 — 单应用部署模式</p>
   <div class="badges">
     <span class="badge">Vue3 + Express</span>
-    <span class="badge">SQLite 数据库</span>
+    <span class="badge">JSON 文件存储</span>
     <span class="badge">SSE 实时推送</span>
     <span class="badge">个人收款码支付</span>
   </div>
@@ -409,14 +409,14 @@
       </thead>
       <tbody>
         <tr>
-          <td><code>OWNER_TOKEN</code></td>
+          <td><code>SHARED_PASSWORD</code></td>
           <td><code>my-secret-2026</code></td>
-          <td>商家管理端密码，<strong>务必改成你自己的复杂字符串</strong></td>
+          <td>商家端 / 骑手端共享登录密码，<strong>务必改成你自己的复杂字符串</strong></td>
         </tr>
         <tr>
           <td><code>DATA_DIR</code></td>
           <td><code>/data</code></td>
-          <td>SQLite 数据库存放路径（配合持久化卷）</td>
+          <td>JSON 数据文件存放路径（配合持久化卷）</td>
         </tr>
       </tbody>
     </table>
@@ -482,7 +482,7 @@ node backend/src/app.js         <span class="comment"># 同时提供 API + 前�
         <tr>
           <td>商家管理端</td>
           <td><code>你的域名/admin</code></td>
-          <td>显示登录页，输入 OWNER_TOKEN 登录</td>
+          <td>显示登录页，输入 SHARED_PASSWORD 登录</td>
         </tr>
         <tr>
           <td>菜单接口</td>
@@ -530,7 +530,7 @@ https://baji-ordering.up.railway.app/
       <div class="code-block">
 https://baji-ordering.up.railway.app/admin
       </div>
-      <p style="margin-top: 12px;">输入 OWNER_TOKEN 登录 → 保持页面打开 → 有新订单时自动响起提示音 + 弹窗通知</p>
+      <p style="margin-top: 12px;">输入 SHARED_PASSWORD 登录 → 保持页面打开 → 有新订单时自动响起提示音 + 弹窗通知</p>
     </div>
 
     <div class="card card-tip">
@@ -558,7 +558,7 @@ https://baji-ordering.up.railway.app/admin
           <tr><td>Runtime</td><td>Node</td></tr>
           <tr><td>Build Command</td><td><code>npm run build</code></td></tr>
           <tr><td>Start Command</td><td><code>node backend/src/app.js</code></td></tr>
-          <tr><td>Environment Variables</td><td>添加 <code>OWNER_TOKEN</code> 和 <code>DATA_DIR=/data</code></td></tr>
+          <tr><td>Environment Variables</td><td>添加 <code>SHARED_PASSWORD</code> 和 <code>DATA_DIR=/data</code></td></tr>
         </table>
       </li>
       <li>在 <strong>Disk</strong> 标签添加持久化磁盘：Mount Path = <code>/data</code>，Size = 1GB</li>
@@ -577,7 +577,7 @@ https://baji-ordering.up.railway.app/admin
     <table style="text-align: left;">
       <tr><td>☐</td><td>代码已推送到 GitHub</td></tr>
       <tr><td>☐</td><td>Railway/Render 项目已创建并构建成功</td></tr>
-      <tr><td>☐</td><td>环境变量 OWNER_TOKEN 已设置</td></tr>
+      <tr><td>☐</td><td>环境变量 SHARED_PASSWORD 已设置</td></tr>
       <tr><td>☐</td><td>持久化卷已挂载（DATA_DIR=/data）</td></tr>
       <tr><td>☐</td><td>域名已生成并可访问</td></tr>
       <tr><td>☐</td><td>/api/health 返回正常</td></tr>

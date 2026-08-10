@@ -148,7 +148,7 @@ function startCountdown() {
     counting.value--
     if (counting.value <= 0) {
       clearInterval(countdownTimer)
-      countingTimer = null
+      countdownTimer = null
     }
   }, 1000)
 }
