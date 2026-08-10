@@ -541,7 +541,7 @@ onMounted(() => {
 }
 
 .dr-actions .van-button {
-  width: 56px;
+  width: 60px;
 }
 
 /* 表单弹窗 */
@@ -629,6 +629,6 @@ onMounted(() => {
 }
 
 .cmi-actions .van-button {
-  width: 48px;
+  width: 56px;
 }
 </style>

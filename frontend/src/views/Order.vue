@@ -140,35 +140,15 @@
         </div>
 
         <div v-else class="cart-items">
-          <!-- 就餐方式选择 -->
+          <!-- 就餐方式 -->
           <div class="dine-type-section">
             <div class="dine-type-label">就餐方式</div>
             <div class="dine-type-options">
-              <div
-                class="dine-type-btn"
-                :class="{ active: dineType === 'dine_in' }"
-                @click="dineType = 'dine_in'"
-              >
-                <van-icon name="shop-o" size="18" />
-                <span>堂食</span>
-              </div>
-              <div
-                class="dine-type-btn"
-                :class="{ active: dineType === 'takeout' }"
-                @click="dineType = 'takeout'"
-              >
+              <div class="dine-type-btn active">
                 <van-icon name="bag-o" size="18" />
                 <span>外带</span>
               </div>
             </div>
-            <van-field
-              v-if="dineType === 'dine_in'"
-              v-model="tableNumber"
-              label="桌号"
-              placeholder="请输入桌号（选填）"
-              class="table-field"
-              :border="false"
-            />
             <van-field
               v-model="customerNote"
               label="备注"
@@ -235,8 +215,7 @@ const categories = ref([])
 const activeIndex = ref(0)
 const showCartSheet = ref(false)
 const submitting = ref(false)
-const dineType = ref('dine_in')
-const tableNumber = ref('')
+const dineType = ref('takeout')
 const customerNote = ref('')
 
 // 顾客信息
@@ -371,8 +350,7 @@ async function handleSubmit() {
   try {
     const payload = {
       items: cart.toOrderPayload(),
-      dine_type: dineType.value,
-      table_number: tableNumber.value || null,
+      dine_type: 'takeout',
       customer_note: customerNote.value || null,
       customer_phone: customerPhone.value || null,
       customer_nickname: customerNickname.value || null,
@@ -381,8 +359,6 @@ async function handleSubmit() {
     const orderId = res.order_id || res.id || res.orderId
     // 下单成功后清空购物车并跳转订单详情
     cart.clear()
-    dineType.value = 'dine_in'
-    tableNumber.value = ''
     customerNote.value = ''
     showCartSheet.value = false
     showToast({ type: 'success', message: '下单成功' })
@@ -791,7 +767,6 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.table-field,
 .note-field {
   background: var(--color-bg);
   border-radius: var(--radius-sm);

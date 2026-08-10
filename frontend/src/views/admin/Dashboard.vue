@@ -3,9 +3,11 @@
     <van-nav-bar title="经营看板" fixed placeholder>
       <template #right>
         <div class="sse-status" v-if="authed">
-          <span class="sse-dot" :class="connected ? 'on' : 'off'"></span>
-          <span class="sse-text">{{ connected ? '实时' : '断开' }}</span>
-          <van-icon name="logout-o" size="20" @click="handleLogout" style="margin-left: 12px" />
+          <div class="sse-badge" :class="connected ? 'online' : 'offline'">
+            <span class="sse-dot" :class="connected ? 'on' : 'off'"></span>
+            <span class="sse-text">{{ connected ? '在线' : '离线' }}</span>
+          </div>
+          <van-icon name="logout-o" size="20" color="#fff" @click="handleLogout" style="margin-left: 10px" />
         </div>
       </template>
     </van-nav-bar>
@@ -295,33 +297,53 @@ async function loadStats() {
 .sse-status {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+}
+
+.sse-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sse-badge.online {
+  background-color: rgba(103, 178, 121, 0.9);
+  color: #fff;
+}
+
+.sse-badge.offline {
+  background-color: rgba(217, 83, 79, 0.9);
+  color: #fff;
 }
 
 .sse-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
 }
 
 .sse-dot.on {
-  background-color: #67B279;
-  box-shadow: 0 0 6px rgba(103, 178, 121, 0.6);
-  animation: pulse 2s infinite;
+  background-color: #fff;
+  animation: pulse 1.5s infinite;
 }
 
 .sse-dot.off {
-  background-color: #ccc;
+  background-color: #fff;
+  opacity: 0.6;
 }
 
 .sse-text {
   font-size: 12px;
-  color: var(--color-text-secondary, #999);
+  color: inherit;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
 }
 
 /* 密码验证 */

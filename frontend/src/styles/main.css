@@ -87,14 +87,17 @@ img {
   background-color: var(--color-primary) !important;
 }
 
-.van-button--primary {
+/* 实心 primary 按钮：覆盖背景和边框 */
+.van-button--primary:not(.van-button--plain) {
   background-color: var(--color-primary) !important;
   border-color: var(--color-primary) !important;
 }
 
+/* 线框 primary 按钮：文字和边框用主题色，背景透明 */
 .van-button--primary.van-button--plain {
   color: var(--color-primary) !important;
   border-color: var(--color-primary) !important;
+  background-color: transparent !important;
 }
 
 .van-tabs__line {
@@ -118,8 +121,14 @@ img {
   color: #fff !important;
 }
 
-.van-tag--primary {
+/* 实心 primary 标签 */
+.van-tag--primary:not(.van-tag--plain) {
   background-color: var(--color-primary) !important;
+}
+
+/* 线框 primary 标签：文字用主题色 */
+.van-tag--primary.van-tag--plain {
+  color: var(--color-primary) !important;
 }
 
 /* ===== 通用工具类 ===== */

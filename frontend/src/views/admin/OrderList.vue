@@ -42,13 +42,13 @@
             <div class="oc-left">
               <div class="oc-no">
                 订单号：{{ order.order_no || order.id }}
-                <van-tag v-if="order.pickup_code" type="primary" size="mini" plain style="margin-left: 6px">
-                  取餐码 {{ order.pickup_code }}
-                </van-tag>
               </div>
               <div class="oc-time">{{ formatTime(order.created_at) }}</div>
             </div>
             <div class="oc-right">
+              <span v-if="order.pickup_code" class="pickup-code-badge">
+                取餐码 {{ order.pickup_code }}
+              </span>
               <van-tag :type="statusTagType(order.payment_status || order.status, order.status)" plain size="medium">
                 {{ statusText(order.payment_status || order.status, order.status) }}
               </van-tag>
@@ -414,6 +414,20 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-primary);
+}
+
+/* 取餐码醒目标签 */
+.pickup-code-badge {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, #C2623F, #D9886A);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 6px rgba(194, 98, 63, 0.3);
 }
 
 /* 展开详情 */
